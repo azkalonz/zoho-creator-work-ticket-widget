@@ -1,22 +1,15 @@
 {
   "service": "CREATOR",
-  "whiteListedDomains": [
-    "azkalonz.github.io",
-    "creatorapp.zoho.com",
-    "localhost:3000",
-    "localhost"
-  ],
   "permissions": ["*://*/*"],
   "host_permissions": ["*://*/*"],
   "cspDomains": {
     "connect-src": [
-      "azkalonz.github.io",
+      "https://*.zoho.com",
+      "https://*.zohoapis.com",
+      "http://*.zoho.com",
+      "http://*.zohoapis.com",
       "accounts.zoho.com",
-      "zohoapis.com",
-      "zoho.com",
-      "creatorapp.zoho.com",
-      "localhost:3000",
-      "localhost"
+      "www.zohoapis.com"
     ]
   }
 }
