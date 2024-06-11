@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
+import { SWRConfig } from "swr";
+import fetcher from "./services/fetcher";
 
 /*global ZOHO*/
 console.log("t", ZOHO);
@@ -10,7 +12,13 @@ ZOHO.CREATOR.init().then(function () {
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
     <React.StrictMode>
-      <App />
+      <SWRConfig
+        value={{
+          fetcher,
+        }}
+      >
+        <App />
+      </SWRConfig>
     </React.StrictMode>
   );
 });
