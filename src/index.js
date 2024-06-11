@@ -4,7 +4,8 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
-window.ZOHO.CREATOR.init().then(function () {
+/*global ZOHO*/
+ZOHO.CREATOR.init().then(function () {
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
     <React.StrictMode>

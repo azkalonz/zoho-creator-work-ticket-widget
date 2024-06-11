@@ -10,7 +10,8 @@ function SalesHistory(props) {
       page: 1,
       pageSize: 10,
     });
-    window.ZOHO.CREATOR.API.getAllRecords(config).then(function (response) {
+    /*global ZOHO*/
+    ZOHO.CREATOR.API.getAllRecords(config).then(function (response) {
       console.log("t", response);
     });
   }, []);
