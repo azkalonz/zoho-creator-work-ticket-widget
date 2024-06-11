@@ -5,6 +5,7 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
 /*global ZOHO*/
+console.log("t", ZOHO);
 ZOHO.CREATOR.init().then(function () {
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
