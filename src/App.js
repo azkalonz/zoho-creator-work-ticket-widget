@@ -12,6 +12,10 @@ function App() {
           <Route exact path="/">
             <SalesHistory />
           </Route>
+
+          <Route exact path="/test">
+            <SalesHistory />
+          </Route>
         </Switch>
       </HashRouter>
     </ThemeProvider>
