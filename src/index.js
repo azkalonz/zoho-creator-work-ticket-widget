@@ -8,7 +8,7 @@ window.ZOHO.CREATOR.init().then(function () {
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
     <React.StrictMode>
-      <App data={data} />
+      <App />
     </React.StrictMode>
   );
 });

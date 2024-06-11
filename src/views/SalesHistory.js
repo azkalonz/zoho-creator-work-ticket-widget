@@ -5,12 +5,12 @@ import creatorConfig from "../lib/creatorConfig";
 
 function SalesHistory(props) {
   useEffect(() => {
-    creatorConfig({
+    let config = creatorConfig({
       reportName: "All_Items",
       page: 1,
       pageSize: 10,
     });
-    ZOHO.CREATOR.API.getAllRecords(config).then(function (response) {
+    window.ZOHO.CREATOR.API.getAllRecords(config).then(function (response) {
       console.log("t", response);
     });
   }, []);
