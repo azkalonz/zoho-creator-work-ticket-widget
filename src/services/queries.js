@@ -16,6 +16,10 @@ export function useGetRecordCount(config) {
 export function useSearchZohoInventoryItem(keyword) {
   return useSWR(
     `items?search_text=${keyword}&page=1&per_page=10&organization_id=${zoho_client.org_id}`,
-    zohoApiFetcher
+    zohoApiFetcher,
+    {
+      shouldRetryOnError: false,
+      errorRetryCount: 1,
+    }
   );
 }
