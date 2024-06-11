@@ -10,3 +10,5 @@ find . -name '*.backup' -type f -delete
 cd ..
 rm -r app.zip
 zip -r app.zip app
+git add app && git commit -m "app update"
+git subtree push --prefix app origin gh-pages
