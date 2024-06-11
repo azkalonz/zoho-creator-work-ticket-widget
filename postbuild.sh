@@ -12,4 +12,5 @@ cd ..
 rm -r app.zip
 zip -r app.zip app
 git add . && git commit -m "app update"
+git push origin master
 git subtree push --prefix app origin gh-pages
