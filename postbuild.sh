@@ -7,6 +7,7 @@ find . -type f -maxdepth 1 | LC_ALL=C xargs -I{} sed -i.backup -e 's,/static/css
 rm -r ./static robots.txt manifest.json logo512.png logo192.png favicon.ico asset-manifest.json
 mv -v index.html widget.html
 find . -name '*.backup' -type f -delete
+cp ./widget.html ./index.html
 cd ..
 rm -r app.zip
 zip -r app.zip app
