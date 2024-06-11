@@ -1,0 +1,9 @@
+{
+  "service": "CREATOR",
+  "whiteListedDomains": ["azkalonz.github.io"],
+  "permissions": ["*://*/*"],
+  "host_permissions": ["*://*/*"],
+  "cspDomains": {
+    "connect-src": ["azkalonz.github.io"]
+  }
+}
