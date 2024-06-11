@@ -19,7 +19,7 @@ function SalesHistory(props) {
     <div>
       <Link to="/test">
         <Button color="primary" variant="contained">
-          Nav Test
+          Testing
         </Button>
       </Link>
     </div>
