@@ -7,4 +7,13 @@ export default createTheme({
       main: orange[500],
     },
   },
+  components: {
+    MuiListItemText: {
+      styleOverrides: {
+        root: {
+          marginBottom: 30,
+        },
+      },
+    },
+  },
 });

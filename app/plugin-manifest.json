@@ -1,15 +1,6 @@
 {
   "service": "CREATOR",
-  "permissions": ["*://*/*"],
-  "host_permissions": ["*://*/*"],
   "cspDomains": {
-    "connect-src": [
-      "https://*.zoho.com",
-      "https://*.zohoapis.com",
-      "http://*.zoho.com",
-      "http://*.zohoapis.com",
-      "accounts.zoho.com",
-      "www.zohoapis.com"
-    ]
+    "connect-src": ["ksportusa.com"]
   }
 }

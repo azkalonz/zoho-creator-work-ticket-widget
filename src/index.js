@@ -1,9 +1,12 @@
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
-import App from "./App";
-import reportWebVitals from "./reportWebVitals";
 import { SWRConfig } from "swr";
+import App from "./App";
+import { disableRevalidation } from "./helpers";
+import "./index.css";
+import reportWebVitals from "./reportWebVitals";
 import fetcher from "./services/fetcher";
 
 /*global ZOHO*/
@@ -15,9 +18,12 @@ ZOHO.CREATOR.init().then(function () {
       <SWRConfig
         value={{
           fetcher,
+          ...disableRevalidation(),
         }}
       >
-        <App />
+        <LocalizationProvider dateAdapter={AdapterMoment}>
+          <App />
+        </LocalizationProvider>
       </SWRConfig>
     </React.StrictMode>
   );
