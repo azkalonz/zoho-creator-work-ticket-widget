@@ -35,6 +35,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers";
 import moment from "moment";
 import React, { useEffect, useState } from "react";
+import { formatCurrency } from "../helpers.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
 import {
@@ -73,6 +74,7 @@ function Main(props) {
   const [toastSuccess, setToastSuccess] = useState(false);
   const [components, setComponents] = useState();
   const [selectedComponents, setSelectedComponents] = useState([]);
+  const [excludedComponents, setExcludedComponents] = useState([]);
 
   const { setDialog, setOpen } = useConfirmDialog();
   const {
@@ -209,9 +211,16 @@ function Main(props) {
 
   useEffect(() => {
     if (compositeItem?.composite_item?.mapped_items) {
-      setComponents(compositeItem?.composite_item?.mapped_items);
+      let excluded = currentWorkTicket?.Excluded_Components || "";
+      excluded = excluded.split(",");
+      setComponents(
+        compositeItem?.composite_item?.mapped_items?.filter(
+          (q) => excluded.indexOf(q.item_id) < 0
+        )
+      );
+      setExcludedComponents(excluded);
     }
-  }, [compositeItem]);
+  }, [compositeItem, currentWorkTicket]);
 
   if (!assemblySKU) {
     return (
@@ -252,6 +261,7 @@ function Main(props) {
         Ticket_Completed: null,
         Status: status,
         Bundle_ID: forceBundleId || bundleId,
+        Excluded_Components: excludedComponents.join(","),
       },
     };
     if (!formData.data.Created_By) {
@@ -460,11 +470,17 @@ function Main(props) {
     setComponents(
       components.filter((q) => selectedComponents.indexOf(q.item_id) < 0)
     );
+    setExcludedComponents(
+      components
+        .filter((q) => selectedComponents.indexOf(q.item_id) >= 0)
+        .map((q) => q.item_id)
+    );
     setSelectedComponents([]);
   };
 
   const handleResetComponents = () => {
     if (compositeItem?.composite_item?.mapped_items) {
+      setExcludedComponents([]);
       setComponents(compositeItem?.composite_item?.mapped_items);
     }
   };
@@ -590,9 +606,28 @@ function Main(props) {
                     primary={workTicketItem.name}
                     secondary="Description"
                   />
+
                   <ListItemText
-                    primary={workTicketItem.actual_available_stock}
+                    primary={
+                      workTicketItem.stock_on_hand +
+                      " " +
+                      workTicketItem.unit.toUpperCase()
+                    }
                     secondary="Qty On Hand"
+                  />
+                  <ListItemText
+                    primary={formatCurrency(workTicketItem.purchase_rate)}
+                    secondary="Purchase Cost"
+                  />
+                  <ListItemText
+                    primary={formatCurrency(
+                      components.reduce(
+                        (acc, obj) =>
+                          acc + obj.purchase_rate * obj.quantity * qtyToBuild,
+                        0
+                      )
+                    )}
+                    secondary="Total Cost"
                   />
                 </>
               )}
@@ -787,7 +822,7 @@ function Main(props) {
             {components?.length !==
               compositeItem?.composite_item?.mapped_items?.length && (
               <Alert severity="info">
-                Minimum of one component is required.{" "}
+                One or more component was removed.{" "}
                 <Button onClick={handleResetComponents}>Reset</Button>
               </Alert>
             )}
@@ -823,6 +858,8 @@ function Main(props) {
                     <>
                       <TableCell>Item</TableCell>
                       <TableCell>Description</TableCell>
+                      <TableCell>Unit Cost</TableCell>
+                      <TableCell>Total Unit Cost</TableCell>
                       <TableCell>Required</TableCell>
                       <TableCell>On Hand</TableCell>
                       <TableCell>Available</TableCell>
@@ -830,7 +867,7 @@ function Main(props) {
                   )}
                   {selectedComponents.length > 0 && (
                     <>
-                      <TableCell colSpan={5}>
+                      <TableCell colSpan={7}>
                         <Button
                           startIcon={<DeleteOutline />}
                           onClick={handleRemoveComponents}
@@ -851,7 +888,9 @@ function Main(props) {
                       name,
                       sku,
                       quantity,
+                      stock_on_hand,
                       item_id,
+                      purchase_rate,
                     } = d;
                     const selected = isSelected(item_id);
 
@@ -869,8 +908,14 @@ function Main(props) {
                         </TableCell>
                         <TableCell>{sku}</TableCell>
                         <TableCell>{name}</TableCell>
+                        <TableCell>{formatCurrency(purchase_rate)}</TableCell>
+                        <TableCell>
+                          {formatCurrency(
+                            purchase_rate * quantity * qtyToBuild
+                          )}
+                        </TableCell>
                         <TableCell>{quantity * qtyToBuild}</TableCell>
-                        <TableCell>{actual_available_stock}</TableCell>
+                        <TableCell>{stock_on_hand}</TableCell>
                         <TableCell>
                           {getAvailableStock(quantity, actual_available_stock)}
                         </TableCell>

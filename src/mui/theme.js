@@ -36,7 +36,7 @@ export default createTheme({
     MuiListItemText: {
       styleOverrides: {
         root: {
-          marginBottom: 30,
+          marginBottom: 17,
         },
       },
     },
