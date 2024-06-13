@@ -621,11 +621,11 @@ function Main(props) {
                   />
                   <ListItemText
                     primary={formatCurrency(
-                      components.reduce(
+                      components?.reduce(
                         (acc, obj) =>
                           acc + obj.purchase_rate * obj.quantity * qtyToBuild,
                         0
-                      )
+                      ) || 0
                     )}
                     secondary="Total Cost"
                   />
