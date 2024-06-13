@@ -19,15 +19,14 @@ const zohoAxiosInstance = axios.create({
     Authorization: "Bearer 1000.0f61fa7fdca7ed5c1d0dad36cfb281b7.2c4651c2ec90f47191a34fa9828e9011",
   },
 });
-
-export const zohoApiFetcher = (url) => {
-  url =
-    "?url=https://www.zohoapis.com/inventory/v1/" +
-    url +
-    (url.indexOf("?") >= 0 ? `&organization_id=${zoho_client.org_id}` : `?organization_id=${zoho_client.org_id}`);
+export const zohoApiFetcher = (url, args = {}) => {
+  url = "?url=https://www.zohoapis.com/inventory/v1/" + url;
+  if (url.indexOf("organization_id") < 0) {
+    url += url.indexOf("?") >= 0 ? `&organization_id=${zoho_client.org_id}` : `?organization_id=${zoho_client.org_id}`;
+  }
   url = encodeURI(url);
-  return zohoAxiosInstance
-    .get(url)
+  args.url = url;
+  return zohoAxiosInstance(args)
     .then((res) => res.data)
     .catch((q) => {
       axios

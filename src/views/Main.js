@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   ButtonGroup,
+  Checkbox,
   Grid,
   InputLabel,
   LinearProgress,
@@ -30,7 +31,12 @@ import moment from "moment";
 import React, { useEffect, useState } from "react";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
-import { useAddRecordMutation, useDeleteRecordMutation, useUpdateRecordMutation } from "../services/mutation";
+import {
+  useAddRecordMutation,
+  useCreateBundleMutation,
+  useDeleteBundleMutation,
+  useUpdateRecordMutation,
+} from "../services/mutation";
 import { useGetAllRecords, useGetCompositeItem, useGetRecordById, useSearchItem } from "../services/queries";
 
 function Main(props) {
@@ -44,10 +50,13 @@ function Main(props) {
   const [status, setStatus] = useState("Open");
   const [ticketStarted, setTicketStarted] = useState();
   const [ticketCompleted, setTicketCompleted] = useState();
+  const [bundleId, setBundleId] = useState();
   const [createdBy, setCreatedBy] = useState();
   const [qtyToBuild, setQtyToBuild] = useState(1);
   const [error, setError] = useState("");
   const [toastSuccess, setToastSuccess] = useState(false);
+  const [components, setComponents] = useState();
+  const [selectedComponents, setSelectedComponents] = useState([]);
 
   const { setDialog, setOpen } = useConfirmDialog();
   const {
@@ -62,12 +71,15 @@ function Main(props) {
     data: savedWorkTicket,
     error: workTicketSaveError,
   } = useUpdateRecordMutation();
-  const { trigger: deleteWorkTicket, error: workTicketDeleteError } = useDeleteRecordMutation();
 
-  const { data: currentWorkTicket, isLoading: isCurrentWorkTicketLoading } = useGetRecordById(
-    "All_Work_Tickets",
-    workTicketID
-  );
+  const { trigger: createBundle } = useCreateBundleMutation();
+  const { trigger: deleteBundle } = useDeleteBundleMutation(bundleId);
+
+  const {
+    data: currentWorkTicket,
+    mutate: mutateCurrentWorkTicket,
+    isLoading: isCurrentWorkTicketLoading,
+  } = useGetRecordById("All_Work_Tickets", workTicketID);
   const { data: lastWorkTicket, isLoading: isLastWorkTicketLoading } = useGetAllRecords(
     !assemblySKU
       ? null
@@ -85,7 +97,7 @@ function Main(props) {
           reportName: "All_Work_Tickets",
           page: 1,
           pageSize: 200,
-          criteria: `SKU=="${assemblySKU}" && Status=="Open" && ID!=${workTicketID}`,
+          criteria: `SKU=="${assemblySKU}" && Status=="Open"${workTicketID ? " && ID!=" + workTicketID : ""}`,
         })
   );
   const { data: users, isLoading: isUsersLoading } = useGetAllRecords(
@@ -97,9 +109,17 @@ function Main(props) {
           pageSize: 200,
         })
   );
-  const { data: compositeItem, isLoading: isCompositeItemLoading } = useGetCompositeItem(assemblyID);
-  const { data: assemblyItem, isLoading: isAssemblyItemLoading } = useSearchItem(assemblySKU);
-  console.log("fff", relatedWorkTickets);
+  const {
+    data: compositeItem,
+    mutate: mutateCompositeItem,
+    isLoading: isCompositeItemLoading,
+  } = useGetCompositeItem(assemblyID);
+  const {
+    data: assemblyItem,
+    mutate: mutateAssemblyItem,
+    isLoading: isAssemblyItemLoading,
+  } = useSearchItem(assemblySKU);
+
   useEffect(() => {
     if (!isAddingWorkTicket) {
       setOpen(false);
@@ -132,7 +152,7 @@ function Main(props) {
   }, [savedWorkTicket, isUpdatingWorkTicket]);
 
   useEffect(() => {
-    if (currentWorkTicket?.ID) {
+    if (!isCurrentWorkTicketLoading && currentWorkTicket?.ID) {
       setQtyToBuild(currentWorkTicket.Quantity);
       setAssemblySKU(currentWorkTicket.SKU);
       setAssemblyID(currentWorkTicket.Assembly_ID);
@@ -143,8 +163,9 @@ function Main(props) {
       setTicketCompleted(currentWorkTicket.Ticket_Completed);
       setCreatedBy(currentWorkTicket.Created_By?.ID);
       setStatus(currentWorkTicket.Status);
+      setBundleId(currentWorkTicket.Bundle_ID);
     }
-  }, [currentWorkTicket]);
+  }, [currentWorkTicket, isCurrentWorkTicketLoading]);
 
   useEffect(() => {
     if (!currentWorkTicket && lastWorkTicket?.length) {
@@ -159,10 +180,14 @@ function Main(props) {
       setError(workTicketError.responseText);
     } else if (workTicketSaveError) {
       setError(workTicketSaveError.responseText);
-    } else if (workTicketDeleteError) {
-      setError(workTicketDeleteError.responseText);
     }
-  }, [workTicketError, workTicketSaveError, workTicketDeleteError]);
+  }, [workTicketError, workTicketSaveError]);
+
+  useEffect(() => {
+    if (compositeItem?.composite_item?.mapped_items) {
+      setComponents(compositeItem?.composite_item?.mapped_items);
+    }
+  }, [compositeItem]);
 
   if (!assemblySKU) {
     return <Alert severity="info">Search an assembly item to create work ticket.</Alert>;
@@ -183,14 +208,11 @@ function Main(props) {
     return <Alert severity="error">{assemblySKU} was not found!</Alert>;
   }
 
-  const handleSave = () => {
+  const handleSave = (forceBundleId = null) => {
     setError(null);
     setToastSuccess(false);
     setOpen(true);
-    setDialog({
-      title: "Saving work ticket...",
-      controlled: true,
-    });
+
     const formData = {
       data: {
         SKU: assemblySKU,
@@ -198,28 +220,79 @@ function Main(props) {
         Date_field: moment(workTicketDate).format("DD-MMM-YYYY"),
         Created_By: createdBy,
         Assembly_ID: assemblyID,
+        Ticket_Started: null,
+        Ticket_Completed: null,
         Status: status,
+        Bundle_ID: forceBundleId || bundleId,
       },
     };
     if (!formData.data.Created_By) {
       const user = users.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser);
       formData.data.Created_By = user?.ID;
     }
+    if (ticketStarted) {
+      formData.data.Ticket_Started = moment(ticketStarted).format("DD-MMM-YYYY");
+    }
+    if (ticketCompleted) {
+      formData.data.Ticket_Completed = moment(ticketCompleted).format("DD-MMM-YYYY");
+    }
+
     if (currentWorkTicket?.ID) {
-      if (ticketStarted) {
-        formData.data.Ticket_Started = moment(ticketStarted).format("DD-MMM-YYYY");
+      if (!bundleId && status === "Completed" && forceBundleId === null) {
+        setDialog({
+          title: "Work Ticket Completion",
+          open: true,
+          content: (
+            <Typography>
+              You are about to mark this work ticket as complete. Continue to create the bundle in Zoho and complete
+              this work ticket.
+            </Typography>
+          ),
+          onClose: (value) => {
+            if (value === true) {
+              setTimeout(() => {
+                handleCreateBundle();
+              }, 1000);
+            }
+          },
+          actions: (onClose) => (
+            <>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  onClose(true, true);
+                }}
+              >
+                Continue
+              </Button>
+              <Button
+                onClick={() => {
+                  onClose(false, true);
+                }}
+              >
+                Close
+              </Button>
+            </>
+          ),
+        });
+      } else {
+        setDialog({
+          title: "Saving work ticket...",
+          controlled: true,
+        });
+        updateWorkTicket(
+          creatorConfig({
+            reportName: "All_Work_Tickets",
+            id: currentWorkTicket.ID,
+            data: formData,
+          })
+        );
       }
-      if (ticketCompleted) {
-        formData.data.Ticket_Completed = moment(ticketCompleted).format("DD-MMM-YYYY");
-      }
-      updateWorkTicket(
-        creatorConfig({
-          reportName: "All_Work_Tickets",
-          id: currentWorkTicket.ID,
-          data: formData,
-        })
-      );
     } else {
+      setDialog({
+        title: "Creating work ticket...",
+        controlled: true,
+      });
       addWorkTicket(
         creatorConfig({
           formName: "Work_Ticket",
@@ -241,7 +314,13 @@ function Main(props) {
             },
           },
           callback: () => {
-            handleNew();
+            deleteBundle({
+              method: "POST",
+              callback: (response) => {
+                console.log("r", response);
+                handleNew();
+              },
+            });
           },
         })
       );
@@ -301,10 +380,96 @@ function Main(props) {
         initialAvailableStock -= parseInt(wt.Quantity) * quantityNeeded;
       });
     }
+    if (!bundleId)
+      initialAvailableStock = parseInt(initialAvailableStock) - parseInt(quantityNeeded) * parseInt(qtyToBuild);
+
     return initialAvailableStock;
   };
 
-  const workTicketItem = assemblyItem.items[0];
+  const handleClick = (event, id) => {
+    if (status === "Completed") return;
+    const selectedIndex = selectedComponents.indexOf(id);
+
+    if (selectedIndex < 0 && selectedComponents.length + 1 === components.length) {
+      return;
+    }
+
+    let newSelected = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selectedComponents, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selectedComponents.slice(1));
+    } else if (selectedIndex === selectedComponents.length - 1) {
+      newSelected = newSelected.concat(selectedComponents.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selectedComponents.slice(0, selectedIndex),
+        selectedComponents.slice(selectedIndex + 1)
+      );
+    }
+    setSelectedComponents(newSelected);
+  };
+
+  const handleRemoveComponents = () => {
+    setComponents(components.filter((q) => selectedComponents.indexOf(q.item_id) < 0));
+    setSelectedComponents([]);
+  };
+
+  const handleResetComponents = () => {
+    if (compositeItem?.composite_item?.mapped_items) {
+      setComponents(compositeItem?.composite_item?.mapped_items);
+    }
+  };
+
+  const isSelected = (id) => selectedComponents.indexOf(id) !== -1;
+
+  const handleCreateBundle = () => {
+    setOpen(true);
+    setDialog({
+      title: "Creating bundle in Zoho...",
+      controlled: true,
+    });
+    const data = {
+      date: moment(ticketCompleted).format("YYYY-MM-DD"),
+      description: workTicketItem.description,
+      composite_item_id: assemblyID,
+      composite_item_name: workTicketItem.name,
+      composite_item_sku: assemblySKU,
+      quantity_to_bundle: qtyToBuild,
+      line_items: components.map(({ item_id, name, description, quantity, inventory_account_id: account_id }) => ({
+        item_id,
+        name,
+        description,
+        quantity_consumed: quantity,
+        account_id,
+        warehouse_id: primaryWarehouse?.warehouse_id,
+      })),
+      is_completed: true,
+    };
+    createBundle({
+      method: "POST",
+      data,
+      callback: (response) => {
+        if (response?.code !== 0) {
+          setError(JSON.stringify(response?.message));
+        } else if (response.bundle?.bundle_id) {
+          setBundleId(response.bundle?.bundle_id);
+          setOpen(false);
+          handleSave(response.bundle?.bundle_id);
+        }
+        (async () => {
+          await mutateCompositeItem(assemblyID);
+          await mutateCurrentWorkTicket("All_Work_Tickets", workTicketID);
+          await mutateAssemblyItem(assemblySKU);
+          setOpen(false);
+        })();
+      },
+    });
+  };
+
+  const workTicketItem = assemblyItem?.items?.[0];
+  const primaryWarehouse = compositeItem?.composite_item?.warehouses?.[0];
 
   return (
     <>
@@ -326,7 +491,7 @@ function Main(props) {
               New
             </Button>
             <Button startIcon={<PrintOutlined />}>Print</Button>
-            <Button startIcon={<SaveOutlined />} onClick={handleSave}>
+            <Button startIcon={<SaveOutlined />} onClick={() => handleSave()}>
               Save
             </Button>
           </ButtonGroup>
@@ -334,9 +499,9 @@ function Main(props) {
         <Grid container p={4}>
           <Grid item xs={6}>
             <List>
-              <ListItemText primary={workTicketItem.sku} secondary="SKU" />
-              <ListItemText primary={workTicketItem.name} secondary="Description" />
-              <ListItemText primary={workTicketItem.actual_available_stock} secondary="Qty On Hand" />
+              <ListItemText primary={workTicketItem?.sku} secondary="SKU" />
+              <ListItemText primary={workTicketItem?.name} secondary="Description" />
+              <ListItemText primary={workTicketItem?.actual_available_stock} secondary="Qty On Hand" />
             </List>
           </Grid>
           <Grid item xs={6} display="flex" flexDirection="column" alignItems="end">
@@ -360,6 +525,7 @@ function Main(props) {
             </InputLabel>
             <DatePicker
               id="work-ticket-date"
+              disabled
               onChange={(newValue) => {
                 setWorkTicketDate(newValue);
               }}
@@ -373,8 +539,12 @@ function Main(props) {
               variant="outlined"
               type="number"
               value={qtyToBuild}
+              disabled={status === "Completed"}
               onChange={(e) => {
                 setQtyToBuild(e.target.value);
+                if (e.target.value <= 0) {
+                  setQtyToBuild(1);
+                }
               }}
               inputProps={{
                 style: {
@@ -391,6 +561,51 @@ function Main(props) {
                 padding: "0!important",
               }}
             >
+              {currentWorkTicket?.Bundle_ID && (
+                <TextField
+                  value={bundleId}
+                  label="Bundle ID"
+                  onChange={(e) => {
+                    setBundleId(e.target.value);
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value !== currentWorkTicket.Bundle_ID) {
+                      setDialog({
+                        open: true,
+                        title: "Confirm Bundle ID",
+                        content: (
+                          <Typography>
+                            Changing the Bundle ID will unbind the work ticket to the created bundle in Zoho.
+                          </Typography>
+                        ),
+                        onClose: (value) => {
+                          if (value !== true) {
+                            setBundleId(currentWorkTicket.Bundle_ID);
+                          }
+                        },
+                        actions: (handleClose) => (
+                          <>
+                            <Button
+                              onClick={() => {
+                                handleClose(true, true);
+                              }}
+                            >
+                              Yes, I know
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                handleClose(false, true);
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ),
+                      });
+                    }
+                  }}
+                />
+              )}
               <Autocomplete
                 options={users}
                 getOptionLabel={(option) => option.Name.display_value}
@@ -417,26 +632,36 @@ function Main(props) {
                 }}
               />
               <DatePicker
+                disabled={status === "Completed"}
                 label="Ticket Started"
-                {...(ticketStarted ? { value: moment(ticketStarted) } : {})}
+                value={ticketStarted ? moment(ticketStarted) : null}
                 onChange={(val) => {
                   setTicketStarted(val);
                 }}
               />
               <DatePicker
                 label="Ticket Completed"
-                disabled={!currentWorkTicket}
-                {...(ticketCompleted ? { value: moment(ticketCompleted) } : {})}
+                disabled={status === "Completed" && bundleId}
+                value={ticketCompleted ? moment(ticketCompleted) : null}
                 onChange={(val) => {
                   setTicketCompleted(val);
                 }}
               />
               <Select
                 value={status}
+                disabled={status === "Completed"}
                 onChange={(e) => {
                   setStatus(e.target.value);
                   if (e.target.value === "Completed" && !ticketCompleted) {
                     setTicketCompleted(new Date());
+                    if (!ticketStarted) {
+                      setTicketStarted(new Date());
+                    }
+                  } else {
+                    setTicketCompleted(null);
+                    if (!currentWorkTicket?.Ticket_Started) {
+                      setTicketStarted(null);
+                    }
                   }
                 }}
               >
@@ -446,31 +671,73 @@ function Main(props) {
                 </MenuItem>
               </Select>
             </Toolbar>
+            {components?.length !== compositeItem?.composite_item?.mapped_items?.length && (
+              <Alert severity="info">
+                Minimum of one component is required. <Button onClick={handleResetComponents}>Reset</Button>
+              </Alert>
+            )}
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Item</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Required</TableCell>
-                  <TableCell>On Hand</TableCell>
-                  <TableCell>Available</TableCell>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      disabled={status === "Completed"}
+                      indeterminate={selectedComponents.length > 0 && selectedComponents.length < components.length - 1}
+                      checked={selectedComponents.length > 0 && selectedComponents.length === components.length - 1}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedComponents(
+                            [...components]
+                              .reverse()
+                              .slice(0, components.length - 1)
+                              .map((c) => c.item_id)
+                          );
+                        } else {
+                          setSelectedComponents([]);
+                        }
+                      }}
+                    />
+                  </TableCell>
+                  {selectedComponents.length === 0 && (
+                    <>
+                      <TableCell>Item</TableCell>
+                      <TableCell>Description</TableCell>
+                      <TableCell>Required</TableCell>
+                      <TableCell>On Hand</TableCell>
+                      <TableCell>Available</TableCell>
+                    </>
+                  )}
+                  {selectedComponents.length > 0 && (
+                    <>
+                      <TableCell colSpan={5}>
+                        <Button startIcon={<DeleteOutline />} onClick={handleRemoveComponents}>
+                          Remove
+                        </Button>
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {compositeItem?.composite_item?.mapped_items?.map((d) => {
-                  const { actual_available_stock, name, sku, quantity } = d;
-                  return (
-                    <TableRow key={sku}>
-                      <TableCell>{sku}</TableCell>
-                      <TableCell>{name}</TableCell>
-                      <TableCell>{quantity}</TableCell>
-                      <TableCell>{actual_available_stock}</TableCell>
-                      <TableCell>
-                        {getAvailableStock(quantity, actual_available_stock) - quantity * qtyToBuild}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {components
+                  ?.sort((a, b) => a.sku - b.sku)
+                  .map((d) => {
+                    const { actual_available_stock, name, sku, quantity, item_id } = d;
+                    const selected = isSelected(item_id);
+
+                    return (
+                      <TableRow key={sku} onClick={(event) => handleClick(event, item_id)} selected={selected}>
+                        <TableCell padding="checkbox">
+                          <Checkbox checked={selected} disabled={status === "Completed"} />
+                        </TableCell>
+                        <TableCell>{sku}</TableCell>
+                        <TableCell>{name}</TableCell>
+                        <TableCell>{quantity * qtyToBuild}</TableCell>
+                        <TableCell>{actual_available_stock}</TableCell>
+                        <TableCell>{getAvailableStock(quantity, actual_available_stock)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </Grid>
