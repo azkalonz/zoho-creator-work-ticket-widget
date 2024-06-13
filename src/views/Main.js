@@ -608,12 +608,12 @@ function Main(props) {
                   />
 
                   <ListItemText
-                    primary={
-                      workTicketItem.stock_on_hand +
-                      " " +
-                      workTicketItem.unit.toUpperCase()
-                    }
+                    primary={workTicketItem.stock_on_hand}
                     secondary="Qty On Hand"
+                  />
+                  <ListItemText
+                    primary={workTicketItem.unit.toUpperCase()}
+                    secondary="UOM"
                   />
                   <ListItemText
                     primary={formatCurrency(workTicketItem.purchase_rate)}
