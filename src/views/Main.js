@@ -187,9 +187,11 @@ function Main(props) {
   }, [workTicketError, workTicketSaveError]);
 
   useEffect(() => {
-    if (compositeItem?.composite_item?.mapped_items) {
+    if (compositeItem?.composite_item?.mapped_items && (workTicketID ? currentWorkTicket?.ID : true)) {
       let excluded = currentWorkTicket?.Excluded_Components || "";
       excluded = excluded.split(",");
+
+      console.log("x", currentWorkTicket);
       setComponents(compositeItem?.composite_item?.mapped_items?.filter((q) => excluded.indexOf(q.item_id) < 0));
       setExcludedComponents(excluded);
     }
@@ -474,12 +476,10 @@ function Main(props) {
           setOpen(false);
           handleSave(response.bundle?.bundle_id);
         }
-        (async () => {
-          await mutateCompositeItem(assemblyID);
-          await mutateCurrentWorkTicket("All_Work_Tickets", workTicketID);
-          await mutateAssemblyItem(assemblySKU);
-          setOpen(false);
-        })();
+        mutateCompositeItem(assemblyID);
+        mutateCurrentWorkTicket("All_Work_Tickets", workTicketID);
+        mutateAssemblyItem(assemblySKU);
+        setOpen(false);
       },
     });
   };
@@ -562,6 +562,9 @@ function Main(props) {
                         onClose: (value) => {
                           if (value !== true) {
                             setBundleId(currentWorkTicket.Bundle_ID);
+                            setStatus(currentWorkTicket?.Status);
+                          } else {
+                            setStatus("Open");
                           }
                         },
                         actions: (handleClose) => (
@@ -583,6 +586,9 @@ function Main(props) {
                           </>
                         ),
                       });
+                    } else {
+                      setBundleId(currentWorkTicket.Bundle_ID);
+                      setStatus(currentWorkTicket?.Status);
                     }
                   }}
                 />
@@ -592,6 +598,7 @@ function Main(props) {
                 getOptionLabel={(option) => option.Name.display_value}
                 sx={{ width: 300 }}
                 disableClearable
+                disabled={!!bundleId}
                 value={
                   createdBy
                     ? users.find((q) => q.ID === createdBy)
@@ -707,7 +714,12 @@ function Main(props) {
           <Grid item xs={12} mt={3}>
             {components?.length !== compositeItem?.composite_item?.mapped_items?.length && (
               <Alert severity="info">
-                One or more component was removed. <Button onClick={handleResetComponents}>Reset</Button>
+                {!!bundleId
+                  ? "One or more components were not included in the bundle."
+                  : "One or more components will not be included in the bundle."}{" "}
+                <Button onClick={handleResetComponents} disabled={!!bundleId}>
+                  Reset
+                </Button>
               </Alert>
             )}
             <Table>
