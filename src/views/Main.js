@@ -88,11 +88,10 @@ function Main(props) {
     removeAfterPrint: true,
   });
 
-  const {
-    data: currentWorkTicket,
-    mutate: mutateCurrentWorkTicket,
-    isLoading: isCurrentWorkTicketLoading,
-  } = useGetRecordById("All_Work_Tickets", workTicketID);
+  const { data: currentWorkTicket, isLoading: isCurrentWorkTicketLoading } = useGetRecordById(
+    "All_Work_Tickets",
+    workTicketID
+  );
   const { data: lastWorkTicket, isLoading: isLastWorkTicketLoading } = useGetAllRecords(
     !assemblySKU
       ? null
@@ -225,7 +224,7 @@ function Main(props) {
     return <Alert severity="error">{assemblySKU} was not found!</Alert>;
   }
 
-  const handleSave = (forceBundleId = null) => {
+  const handleSave = (forceBundleId = null, callback) => {
     setError(null);
     setToastSuccess(false);
     setOpen(true);
@@ -303,6 +302,7 @@ function Main(props) {
             reportName: "All_Work_Tickets",
             id: currentWorkTicket.ID,
             data: formData,
+            callback,
           })
         );
       }
@@ -485,7 +485,6 @@ function Main(props) {
           handleSave(response.bundle?.bundle_id);
         }
         mutateCompositeItem(assemblyID);
-        mutateCurrentWorkTicket("All_Work_Tickets", workTicketID);
         mutateAssemblyItem(assemblySKU);
         setOpen(false);
       },
@@ -515,10 +514,12 @@ function Main(props) {
               New
             </Button>
             <Button
-              disabled={!components || !currentWorkTicket}
+              disabled={!components || !currentWorkTicket || (status === "Completed" && !bundleId)}
               startIcon={<PrintOutlined />}
               onClick={() => {
-                handlePrint(null, () => componentToPrint.current);
+                handleSave(null, () => {
+                  handlePrint(null, () => componentToPrint.current);
+                });
               }}
             >
               Print
@@ -638,7 +639,7 @@ function Main(props) {
                 }}
               />
               <DatePicker
-                disabled={status === "Completed"}
+                disabled={status === "Completed" && !!bundleId}
                 label="Ticket Started"
                 value={ticketStarted ? moment(ticketStarted) : null}
                 onChange={(val) => {
@@ -662,11 +663,6 @@ function Main(props) {
                     setTicketCompleted(new Date());
                     if (!ticketStarted) {
                       setTicketStarted(new Date());
-                    }
-                  } else {
-                    setTicketCompleted(null);
-                    if (!currentWorkTicket?.Ticket_Started) {
-                      setTicketStarted(null);
                     }
                   }
                 }}
@@ -750,7 +746,7 @@ function Main(props) {
                         ...currentWorkTicket,
                         Ticket_Completed: ticketCompleted,
                         Ticket_Started: ticketStarted,
-                        Created_By: { display_value: createdBy },
+                        Created_By: users.find((q) => q.ID === createdBy),
                         Date_field: workTicketDate,
                         Status: status,
                       },

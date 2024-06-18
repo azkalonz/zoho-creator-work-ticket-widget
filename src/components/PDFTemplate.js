@@ -10,7 +10,7 @@ function PDFTemplate(props) {
     SKU,
     Ticket_Completed,
     Work_Ticket_No,
-    Created_By: { display_value: createdBy } = {},
+    Created_By: { Name: { display_value: createdBy } } = {},
     Status,
     Date_field,
     Ticket_Started,
