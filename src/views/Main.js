@@ -29,7 +29,7 @@ import {
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import moment from "moment";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { formatCurrency } from "../helpers.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
@@ -40,6 +40,8 @@ import {
   useUpdateRecordMutation,
 } from "../services/mutation";
 import { useGetAllRecords, useGetCompositeItem, useGetRecordById, useSearchItem } from "../services/queries";
+import { useReactToPrint } from "react-to-print";
+import PDFTemplate from "../components/PDFTemplate.js";
 
 function Main(props) {
   /*global ZOHO*/
@@ -60,6 +62,7 @@ function Main(props) {
   const [components, setComponents] = useState();
   const [selectedComponents, setSelectedComponents] = useState([]);
   const [excludedComponents, setExcludedComponents] = useState([]);
+  const componentToPrint = useRef();
 
   const { setDialog, setOpen } = useConfirmDialog();
   const {
@@ -77,6 +80,13 @@ function Main(props) {
 
   const { trigger: createBundle } = useCreateBundleMutation();
   const { trigger: deleteBundle } = useDeleteBundleMutation(bundleId);
+
+  const handlePrint = useReactToPrint({
+    documentTitle: "Print This Document",
+    onBeforePrint: () => console.log("before printing..."),
+    onAfterPrint: () => console.log("after printing..."),
+    removeAfterPrint: true,
+  });
 
   const {
     data: currentWorkTicket,
@@ -296,6 +306,8 @@ function Main(props) {
             data: formData,
           })
         );
+        mutateCompositeItem(assemblyID);
+        mutateAssemblyItem(assemblySKU);
       }
     } else {
       setDialog({
@@ -506,7 +518,15 @@ function Main(props) {
             <Button startIcon={<AddOutlined />} onClick={handleNew}>
               New
             </Button>
-            <Button startIcon={<PrintOutlined />}>Print</Button>
+            <Button
+              disabled={!components || !currentWorkTicket}
+              startIcon={<PrintOutlined />}
+              onClick={() => {
+                handlePrint(null, () => componentToPrint.current);
+              }}
+            >
+              Print
+            </Button>
             <Button startIcon={<SaveOutlined />} onClick={() => handleSave()}>
               Save
             </Button>
@@ -721,6 +741,37 @@ function Main(props) {
                   Reset
                 </Button>
               </Alert>
+            )}
+            {!!components && !!currentWorkTicket && (
+              <div style={{ display: "none" }}>
+                <PDFTemplate
+                  componentRef={componentToPrint}
+                  workTicket={{
+                    currentWorkTicket: {
+                      ...{
+                        ...currentWorkTicket,
+                        Ticket_Completed: ticketCompleted,
+                        Ticket_Started: ticketStarted,
+                        Created_By: { display_value: createdBy },
+                        Date_field: workTicketDate,
+                        Status: status,
+                      },
+                      ...workTicketItem,
+                    },
+                    components: components.map((d) => {
+                      const { actual_available_stock, quantity, purchase_rate } = d;
+                      return {
+                        ...d,
+                        unitCost: formatCurrency(purchase_rate),
+                        totalUnitCost: formatCurrency(purchase_rate * quantity * qtyToBuild),
+                        required: quantity * qtyToBuild,
+                        available: getAvailableStock(quantity, actual_available_stock),
+                      };
+                    }),
+                    qtyToBuild,
+                  }}
+                />
+              </div>
             )}
             <Table>
               <TableHead>

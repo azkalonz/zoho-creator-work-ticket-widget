@@ -1,0 +1,33 @@
+@media print {
+  @page {
+    size: 215.9mm 279.4mm;
+  }
+}
+.pdf-template {
+  $min-height: 30px;
+  $border: 1px solid;
+  $padding: 3px 10px;
+  padding: 15px;
+  width: 100%;
+  &,
+  p {
+    font-size: 15px !important;
+  }
+  .outlined .MuiGrid-item {
+    border: $border;
+    border-bottom: 0;
+    border-right: 0;
+    min-height: $min-height;
+    padding: $padding;
+    align-items: center;
+    display: flex;
+  }
+  .outlined {
+    border: $border;
+    border-top: 0;
+    border-left: 0;
+    &.centered .MuiGrid-item {
+      justify-content: center;
+    }
+  }
+}
