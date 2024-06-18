@@ -36,7 +36,7 @@ function PDFTemplate(props) {
         <Typography>Needed By: {Ticket_Completed && moment(Ticket_Completed).format("ll")}</Typography>
       </Grid>
 
-      <Grid container xs={12} className="outlined centered">
+      <Grid container className="outlined centered">
         <Grid item xs={12}>
           Assembly Description
         </Grid>
@@ -123,19 +123,19 @@ function PDFTemplate(props) {
         <Grid item xs={3} style={{ justifyContent: "center" }}>
           <Typography>Component ID</Typography>
         </Grid>
-        <Grid item xs={3.6} style={{ justifyContent: "center" }}>
+        <Grid item xs={5} style={{ justifyContent: "center" }}>
           <Typography>Description</Typography>
         </Grid>
-        <Grid item xs={1.3} style={{ justifyContent: "center" }}>
+        <Grid item xs={1} style={{ justifyContent: "center" }}>
           <Typography>Qty Req.</Typography>
         </Grid>
-        <Grid item xs={1.3} style={{ justifyContent: "center" }}>
+        <Grid item xs={1} style={{ justifyContent: "center" }}>
           <Typography>On Hand</Typography>
         </Grid>
-        <Grid item xs={1.3} style={{ justifyContent: "center" }}>
+        <Grid item xs={1} style={{ justifyContent: "center" }}>
           <Typography>Qty Avail</Typography>
         </Grid>
-        <Grid item xs={1.5} style={{ justifyContent: "center" }}>
+        <Grid item xs={1} style={{ justifyContent: "center" }}>
           <Typography>Status</Typography>
         </Grid>
         {components.map(({ sku, description, stock_on_hand, required, available }) => (
@@ -143,19 +143,19 @@ function PDFTemplate(props) {
             <Grid item xs={3}>
               <Typography>{sku}</Typography>
             </Grid>
-            <Grid item xs={3.6}>
+            <Grid item xs={5}>
               <Typography>{description}</Typography>
             </Grid>
-            <Grid item xs={1.3}>
+            <Grid item xs={1}>
               <Typography>{required}</Typography>
             </Grid>
-            <Grid item xs={1.3}>
+            <Grid item xs={1}>
               <Typography>{stock_on_hand}</Typography>
             </Grid>
-            <Grid item xs={1.3}>
+            <Grid item xs={1}>
               <Typography>{available}</Typography>
             </Grid>
-            <Grid item xs={1.5}>
+            <Grid item xs={1}>
               <Typography></Typography>
             </Grid>
           </>

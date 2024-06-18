@@ -201,7 +201,6 @@ function Main(props) {
       let excluded = currentWorkTicket?.Excluded_Components || "";
       excluded = excluded.split(",");
 
-      console.log("x", currentWorkTicket);
       setComponents(compositeItem?.composite_item?.mapped_items?.filter((q) => excluded.indexOf(q.item_id) < 0));
       setExcludedComponents(excluded);
     }
@@ -306,8 +305,6 @@ function Main(props) {
             data: formData,
           })
         );
-        mutateCompositeItem(assemblyID);
-        mutateAssemblyItem(assemblySKU);
       }
     } else {
       setDialog({
@@ -356,7 +353,6 @@ function Main(props) {
       open: true,
       content: <Typography>Are you sure you want to delete this work ticket?</Typography>,
       onClose: (value) => {
-        console.log("v", value);
         if (value === true) {
           __handleDelete();
         }
@@ -537,7 +533,9 @@ function Main(props) {
           <Grid item xs={6}>
             <List style={{ flexDirection: "row", display: "flex", gap: 6 }}>
               {!workTicketItem &&
-                new Array(6).fill(0).map((a, i) => <Skeleton width={100 / 6 + "%"} height={80} animation key={i} />)}
+                new Array(6)
+                  .fill(0)
+                  .map((a, i) => <Skeleton width={100 / 6 + "%"} height={80} animation="wave" key={i} />)}
               {!!workTicketItem && (
                 <>
                   <ListItemText primary={workTicketItem.sku} secondary="SKU" />
