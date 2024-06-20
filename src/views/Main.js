@@ -814,13 +814,15 @@ function Main(props) {
               value={qtyToBuild}
               disabled={status === "Completed"}
               onChange={(e) => {
-                setQtyToBuild(e.target.value);
+                if (e.target.value >= 999999) {
+                  setQtyToBuild(999999);
+                } else {
+                  setQtyToBuild(e.target.value);
+                }
               }}
               onBlur={(e) => {
                 if (e.target.value <= 0) {
                   setQtyToBuild(1);
-                } else if (e.target.value >= 999999) {
-                  setQtyToBuild(999999);
                 }
               }}
               inputProps={{
