@@ -141,7 +141,7 @@ function Main(props) {
     !relatedAssemblies.data
       ? null
       : creatorConfig({
-          reportName: "Public_Work_Tickets",
+          reportName: "All_Work_Tickets",
           page: 1,
           pageSize: 200,
           criteria: `${Array.from(new Set(relatedAssemblies.data.map((q) => q.SKU)))
@@ -154,7 +154,7 @@ function Main(props) {
     !workTicketsComponentsUsedIn.data
       ? null
       : creatorConfig({
-          reportName: "Public_Work_Tickets",
+          reportName: "All_Work_Tickets",
           page: 1,
           pageSize: 200,
           criteria: `${compositeItem.data?.composite_item?.mapped_items
@@ -199,16 +199,16 @@ function Main(props) {
   }, [refresh.data]);
 
   useEffect(() => {
-    if (addWorkTicket.data?.ID) {
+    if (addWorkTicket.data?.data?.ID) {
       const param = {
         action: "open",
-        url: `#Page:Create_Work_Ticket?work_ticket_id=${addWorkTicket.data.ID}`,
+        url: `#Page:Create_Work_Ticket?work_ticket_id=${addWorkTicket.data.data.ID}`,
         window: "same",
       };
       /*global ZOHO */
       ZOHO.CREATOR.UTIL.navigateParentURL(param);
     }
-  }, [addWorkTicket.data]);
+  }, [addWorkTicket]);
 
   useEffect(() => {
     if (!updateWorkTicket.isMutating) {
@@ -433,7 +433,7 @@ function Main(props) {
         title: "Creating work ticket...",
         controlled: true,
       });
-      addWorkTicket.data(
+      addWorkTicket.trigger(
         creatorConfig({
           formName: "Work_Ticket",
           data: formData,
@@ -633,7 +633,7 @@ function Main(props) {
     });
     const data = {
       date: moment(ticketCompleted).format("YYYY-MM-DD"),
-      description: workTicketItem.description,
+      description: `${workTicketItem.SKU}      ${workTicketItem.description}`,
       composite_item_id: assemblyID,
       composite_item_name: workTicketItem.name,
       composite_item_sku: assemblySKU,
