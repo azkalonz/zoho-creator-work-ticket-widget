@@ -1115,15 +1115,13 @@ function Main(props) {
                         </TableCell>
                         <TableCell>{name}</TableCell>
                         <TableCell>{formatCurrency(purchase_rate)}</TableCell>
-                        {!!workTicketID && (
-                          <TableCell>
-                            {getTotalUnitCost(
-                              purchase_rate,
-                              quantity,
-                              settings[getSettings()].live_update.total_unit_cost
-                            )}
-                          </TableCell>
-                        )}
+                        <TableCell>
+                          {getTotalUnitCost(
+                            purchase_rate,
+                            quantity,
+                            settings[getSettings()].live_update.total_unit_cost
+                          )}
+                        </TableCell>
                         <TableCell>
                           {getRequiredQuantity(quantity, settings[getSettings()].live_update.required)}
                         </TableCell>
