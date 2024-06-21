@@ -16,6 +16,7 @@ import {
   Grid,
   InputLabel,
   LinearProgress,
+  Link,
   List,
   ListItemText,
   MenuItem,
@@ -609,7 +610,17 @@ function Main(props) {
                   ))}
               {!!workTicketItem && (
                 <>
-                  <ListItemText primary={workTicketItem.sku} secondary="SKU" />
+                  <ListItemText
+                    primary={workTicketItem.sku}
+                    secondary="SKU"
+                    primaryTypographyProps={{
+                      component: Link,
+                      href:
+                        "https://inventory.zoho.com/app/789146207#/inventory/items/composite/" +
+                        workTicketItem.item_id,
+                      target: "_blank",
+                    }}
+                  />
                   <ListItemText
                     primary={workTicketItem.name}
                     secondary="Description"
@@ -618,6 +629,10 @@ function Main(props) {
                   <ListItemText
                     primary={workTicketItem.stock_on_hand}
                     secondary="Qty On Hand"
+                  />
+                  <ListItemText
+                    primary={workTicketItem.available_stock}
+                    secondary="Qty Available"
                   />
                   <ListItemText
                     primary={workTicketItem.unit.toUpperCase()}
