@@ -27,7 +27,6 @@ import {
   TableRow,
   TextField,
   Toolbar,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
@@ -37,7 +36,7 @@ import { useReactToPrint } from "react-to-print";
 import PDFTemplate from "../components/PDFTemplate.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
-import { zohoAxiosInstance } from "../services/fetcher.js";
+import fetcher, { zohoAxiosInstance } from "../services/fetcher.js";
 import {
   useAddRecordMutation,
   useAuthenticateMutation,
@@ -54,7 +53,12 @@ import {
   useSearchItem,
 } from "../services/queries";
 import { settings } from "../settings.js";
-import { formatCurrency, getAuthenticationLink, getZohoInventoryItemLink } from "../utils.js";
+import {
+  formatCurrency,
+  getAuthenticationLink,
+  getZohoInventoryBundleLink,
+  getZohoInventoryItemLink,
+} from "../utils.js";
 
 function Main(props) {
   /*global ZOHO*/
@@ -118,10 +122,11 @@ function Main(props) {
   );
   const [isReady, setIsReady] = useState(!!zohoSettings?.api__access_token);
 
-  const { data: currentWorkTicket, isLoading: isCurrentWorkTicketLoading } = useGetRecordById(
-    "All_Work_Tickets",
-    workTicketID
-  );
+  const {
+    data: currentWorkTicket,
+    isLoading: isCurrentWorkTicketLoading,
+    mutate: mutateCurrentWorkTicket,
+  } = useGetRecordById("All_Work_Tickets", workTicketID);
   const { data: lastWorkTicket, isLoading: isLastWorkTicketLoading } = useGetAllRecords(
     !assemblySKU
       ? null
@@ -216,17 +221,7 @@ function Main(props) {
 
   useEffect(() => {
     if (!isCurrentWorkTicketLoading && currentWorkTicket?.ID) {
-      setQtyToBuild(currentWorkTicket.Quantity);
-      setAssemblySKU(currentWorkTicket.SKU);
-      setAssemblyID(currentWorkTicket.Assembly_ID);
-      setWorkTicketDate(currentWorkTicket.Date_field);
-      setWorkTicketID(currentWorkTicket.ID);
-      setCreatedBy(currentWorkTicket.Created_By?.ID);
-      setTicketStarted(currentWorkTicket.Ticket_Started);
-      setTicketCompleted(currentWorkTicket.Ticket_Completed);
-      setCreatedBy(currentWorkTicket.Created_By?.ID);
-      setStatus(currentWorkTicket.Status);
-      setBundleId(currentWorkTicket.Bundle_ID);
+      handleSetInitialValues(currentWorkTicket);
     }
   }, [currentWorkTicket, isCurrentWorkTicketLoading]);
 
@@ -276,14 +271,18 @@ function Main(props) {
   }, [workTicketError, workTicketSaveError, settingsSaveError]);
 
   useEffect(() => {
-    if (compositeItem?.composite_item?.mapped_items && (workTicketID ? currentWorkTicket?.ID : true)) {
+    if (
+      !isCompositeItemLoading &&
+      compositeItem?.composite_item?.mapped_items &&
+      (workTicketID ? currentWorkTicket?.ID : true)
+    ) {
       let excluded = currentWorkTicket?.Excluded_Components || "";
       excluded = excluded.split(",");
 
       setComponents(compositeItem?.composite_item?.mapped_items?.filter((q) => excluded.indexOf(q.item_id) < 0));
       setExcludedComponents(excluded);
     }
-  }, [compositeItem, currentWorkTicket]);
+  }, [compositeItem, currentWorkTicket, isCompositeItemLoading]);
 
   useEffect(() => {
     if (!!code && zohoSettings?.ID) {
@@ -338,10 +337,14 @@ function Main(props) {
     removeAfterPrint: true,
   });
 
-  const handleSave = (forceBundleId = null, callback) => {
+  const handleSave = (forceBundleId = null, initialCallback) => {
     setError(null);
     setToastSuccess(false);
     setOpen(true);
+    const callback = () => {
+      if (typeof initialCallback === "function") initialCallback();
+      handleRefreshData();
+    };
 
     const formData = {
       data: {
@@ -512,14 +515,18 @@ function Main(props) {
     return qtyToBuild;
   };
 
-  const getRequiredQuantity = (quantity, liveUpdate = true) => quantity * (liveUpdate ? getQtyToBuild() : 1);
+  const getRequiredQuantity = (quantity, liveUpdate = true) =>
+    quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1);
 
   const getTotalCost = (liveUpdate = true) =>
-    components?.reduce((acc, obj) => acc + obj.purchase_rate * obj.quantity * (liveUpdate ? getQtyToBuild() : 1), 0) ||
-    0;
+    components?.reduce(
+      (acc, obj) =>
+        acc + obj.purchase_rate * obj.quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1),
+      0
+    ) || 0;
 
   const getTotalUnitCost = (purchaseRate, quantity, liveUpdate = false) => {
-    return formatCurrency(purchaseRate * quantity * (liveUpdate ? getQtyToBuild() : 1));
+    return formatCurrency(purchaseRate * quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1));
   };
 
   const getSettings = () => (workTicketID ? "editing_work_ticket" : "creating_work_ticket");
@@ -629,11 +636,37 @@ function Main(props) {
           setOpen(false);
           handleSave(response.bundle?.bundle_id);
         }
-        mutateCompositeItem(assemblyID);
-        mutateAssemblyItem(assemblySKU);
+        handleRefreshData();
         setOpen(false);
       },
     });
+  };
+
+  const handleRefreshData = async () => {
+    const updated = await fetcher(
+      "getRecordById",
+      creatorConfig({
+        reportName: "All_Work_Tickets",
+        id: workTicketID,
+      })
+    );
+    mutateCurrentWorkTicket(updated);
+    mutateCompositeItem();
+    mutateAssemblyItem();
+  };
+
+  const handleSetInitialValues = (data) => {
+    setQtyToBuild(data.Quantity);
+    setAssemblySKU(data.SKU);
+    setAssemblyID(data.Assembly_ID);
+    setWorkTicketDate(data.Date_field);
+    setWorkTicketID(data.ID);
+    setCreatedBy(data.Created_By?.ID);
+    setTicketStarted(data.Ticket_Started);
+    setTicketCompleted(data.Ticket_Completed);
+    setCreatedBy(data.Created_By?.ID);
+    setStatus(data.Status);
+    setBundleId(data.Bundle_ID);
   };
 
   const workTicketItem = assemblyItem?.items?.[0];
@@ -756,18 +789,13 @@ function Main(props) {
                     secondary="Qty Available"
                   />
                   <ListItemText primary={getCommittedStock()} secondary="Committed" />
-                  <ListItemText primary={workTicketItem.unit.toUpperCase()} secondary="UOM" />
                   <ListItemText primary={workTicketItem.reorder_level} secondary="Minimum Stock" />
+                  <ListItemText primary={workTicketItem.unit.toUpperCase()} secondary="UOM" />
                   <ListItemText primary={formatCurrency(workTicketItem.purchase_rate)} secondary="Purchase Cost" />
                   <ListItemText
                     primary={
                       <Typography style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                        {formatCurrency(getTotalCost(false))}
-                        {settings[getSettings()].live_update.total_cost && (
-                          <Tooltip title="Total cost after saving" placement="bottom" style={{ opacity: 0.7 }}>
-                            <Typography>({formatCurrency(getTotalCost(true))})</Typography>
-                          </Tooltip>
-                        )}
+                        {formatCurrency(getTotalCost(settings[getSettings()].live_update.total_cost))}
                       </Typography>
                     }
                     secondary="Total Cost"
@@ -783,57 +811,6 @@ function Main(props) {
                 flexWrap: "wrap",
               }}
             >
-              {currentWorkTicket?.Bundle_ID && (
-                <TextField
-                  value={bundleId}
-                  label="Bundle ID"
-                  onChange={(e) => {
-                    setBundleId(e.target.value);
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value !== currentWorkTicket.Bundle_ID) {
-                      setDialog({
-                        open: true,
-                        title: "Confirm Bundle ID",
-                        content: (
-                          <Typography>
-                            Changing the Bundle ID will unbind the work ticket to the created bundle in Zoho.
-                          </Typography>
-                        ),
-                        onClose: (value) => {
-                          if (value !== true) {
-                            setBundleId(currentWorkTicket.Bundle_ID);
-                            setStatus(currentWorkTicket?.Status);
-                          } else {
-                            setStatus("Open");
-                          }
-                        },
-                        actions: (handleClose) => (
-                          <>
-                            <Button
-                              onClick={() => {
-                                handleClose(true, true);
-                              }}
-                            >
-                              Yes, I know
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                handleClose(false, true);
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </>
-                        ),
-                      });
-                    } else {
-                      setBundleId(currentWorkTicket.Bundle_ID);
-                      setStatus(currentWorkTicket?.Status);
-                    }
-                  }}
-                />
-              )}
               <Autocomplete
                 options={users}
                 getOptionLabel={(option) => option.Name.display_value}
@@ -948,6 +925,75 @@ function Main(props) {
                 maxWidth: 258,
               }}
             />
+            {currentWorkTicket?.Bundle_ID && (
+              <>
+                <InputLabel shrink={false} htmlFor="bundle-id">
+                  <Typography>
+                    Bundle ID
+                    <Link
+                      href={getZohoInventoryBundleLink(assemblyID, currentWorkTicket?.Bundle_ID, assemblySKU)}
+                      target="_blank"
+                    >
+                      <Launch style={{ transform: "scale(0.7)" }} />
+                    </Link>
+                  </Typography>
+                </InputLabel>
+                <TextField
+                  value={bundleId}
+                  id="bundle-id"
+                  variant="outlined"
+                  onChange={(e) => {
+                    setBundleId(e.target.value);
+                  }}
+                  style={{
+                    width: "100%",
+                    maxWidth: 258,
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value !== currentWorkTicket.Bundle_ID) {
+                      setDialog({
+                        open: true,
+                        title: "Confirm Bundle ID",
+                        content: (
+                          <Typography>
+                            Changing the Bundle ID will unbind the work ticket to the created bundle in Zoho.
+                          </Typography>
+                        ),
+                        onClose: (value) => {
+                          if (value !== true) {
+                            setBundleId(currentWorkTicket.Bundle_ID);
+                            setStatus(currentWorkTicket?.Status);
+                          } else {
+                            setStatus("Open");
+                          }
+                        },
+                        actions: (handleClose) => (
+                          <>
+                            <Button
+                              onClick={() => {
+                                handleClose(true, true);
+                              }}
+                            >
+                              Yes, I know
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                handleClose(false, true);
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ),
+                      });
+                    } else {
+                      setBundleId(currentWorkTicket.Bundle_ID);
+                      setStatus(currentWorkTicket?.Status);
+                    }
+                  }}
+                />
+              </>
+            )}
           </Grid>
           <Grid item xs={12} mt={3}>
             {components?.length !== compositeItem?.composite_item?.mapped_items?.length && (
@@ -1066,29 +1112,22 @@ function Main(props) {
                         <TableCell>{formatCurrency(purchase_rate)}</TableCell>
                         {!!workTicketID && (
                           <TableCell>
-                            {getTotalUnitCost(purchase_rate, quantity, false)}
-                            {settings[getSettings()].live_update.total_unit_cost && (
-                              <Tooltip title="Total unit cost after saving" placement="bottom" style={{ opacity: 0.7 }}>
-                                <Typography>({getTotalUnitCost(purchase_rate, quantity)})</Typography>
-                              </Tooltip>
+                            {getTotalUnitCost(
+                              purchase_rate,
+                              quantity,
+                              settings[getSettings()].live_update.total_unit_cost
                             )}
                           </TableCell>
                         )}
                         <TableCell>
-                          {getRequiredQuantity(quantity, false)}
-                          {settings[getSettings()].live_update.required && (
-                            <Tooltip title="Required after saving" placement="bottom" style={{ opacity: 0.7 }}>
-                              <Typography>({getRequiredQuantity(quantity)})</Typography>
-                            </Tooltip>
-                          )}
+                          {getRequiredQuantity(quantity, settings[getSettings()].live_update.required)}
                         </TableCell>
                         <TableCell>{stock_on_hand}</TableCell>
                         <TableCell>
-                          {getAvailableStock(quantity, actual_available_stock, false)}
-                          {settings[getSettings()].live_update.available && (
-                            <Tooltip title="Available stock after saving" placement="bottom" style={{ opacity: 0.7 }}>
-                              <Typography>({getAvailableStock(quantity, actual_available_stock)})</Typography>
-                            </Tooltip>
+                          {getAvailableStock(
+                            quantity,
+                            actual_available_stock,
+                            settings[getSettings()].live_update.available
                           )}
                         </TableCell>
                       </TableRow>
