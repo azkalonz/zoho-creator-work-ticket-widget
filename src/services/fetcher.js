@@ -24,8 +24,8 @@ export const zohoApiFetcher = (url, args = {}) => {
   return zohoAxiosInstance(args).then((res) => res.data);
 };
 
-export function zohoMultiApiFetcher(urls) {
-  return Promise.all(urls.map((url) => zohoApiFetcher(url)));
+export function zohoMultiApiFetcher(urls, api = "ZOHO_INVENTORY") {
+  return Promise.all(urls.map((url) => zohoApiFetcher(url, { api })));
 }
 
 export default fetcher;

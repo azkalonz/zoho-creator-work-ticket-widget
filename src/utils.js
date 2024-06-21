@@ -32,9 +32,9 @@ export function formatCurrency(value) {
   return formattedNum;
 }
 
-export function getZohoInvetoryCompositeItemLink(id, searchText = "") {
+export function getZohoInventoryItemLink(id, searchText = "", composite = true) {
   if (!id) return "";
-  let link = "https://inventory.zoho.com/app/789146207#/inventory/items/composite/" + id;
+  let link = `https://inventory.zoho.com/app/789146207#/inventory/${composite ? "compositeitems" : "items"}/${id}`;
   if (searchText) {
     link += `?filter_by=Status.All&per_page=200&search_criteria=%7B"search_text"%3A"${searchText}"%7D&sort_column=name&sort_order=A`;
   }

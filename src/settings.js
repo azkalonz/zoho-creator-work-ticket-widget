@@ -1,5 +1,11 @@
 export const settings = {
   org_id: 789146207,
+  items: {
+    show_link: false,
+  },
+  composite_items: {
+    show_link: true,
+  },
   creating_work_ticket: {
     live_update: {
       total_unit_cost: false,

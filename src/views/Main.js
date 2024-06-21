@@ -1,4 +1,4 @@
-import { AddOutlined, DeleteOutline, PrintOutlined, SaveOutlined } from "@mui/icons-material";
+import { AddOutlined, DeleteOutline, Launch, LoginOutlined, PrintOutlined, SaveOutlined } from "@mui/icons-material";
 import {
   Alert,
   AppBar,
@@ -8,6 +8,7 @@ import {
   Button,
   ButtonGroup,
   Checkbox,
+  CircularProgress,
   Grid,
   InputLabel,
   LinearProgress,
@@ -32,9 +33,11 @@ import {
 import { DatePicker } from "@mui/x-date-pickers";
 import moment from "moment";
 import React, { useEffect, useRef, useState } from "react";
-import { formatCurrency, getAuthenticationLink, getZohoInvetoryCompositeItemLink } from "../utils.js";
+import { useReactToPrint } from "react-to-print";
+import PDFTemplate from "../components/PDFTemplate.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
+import { zohoAxiosInstance } from "../services/fetcher.js";
 import {
   useAddRecordMutation,
   useAuthenticateMutation,
@@ -50,10 +53,8 @@ import {
   useGetRecordById,
   useSearchItem,
 } from "../services/queries";
-import { useReactToPrint } from "react-to-print";
-import PDFTemplate from "../components/PDFTemplate.js";
 import { settings } from "../settings.js";
-import { zohoAxiosInstance } from "../services/fetcher.js";
+import { formatCurrency, getAuthenticationLink, getZohoInventoryItemLink } from "../utils.js";
 
 function Main(props) {
   /*global ZOHO*/
@@ -131,8 +132,8 @@ function Main(props) {
         })
   );
 
-  // const { data: committedSalesOrders } = useGetItemSalesOrders(assemblyID);
-  // console.log("asdasdas", committedSalesOrders);
+  const { data: committedSalesOrders } = useGetItemSalesOrders(!isReady ? null : assemblyID);
+
   const {
     data: compositeItem,
     mutate: mutateCompositeItem,
@@ -241,17 +242,18 @@ function Main(props) {
         if (s[key] == "true" || s[key] == "false") {
           s[key] = eval(s[key]);
         }
-        if (settingKey2) {
+        if (path.length > 2) {
           settings[option][settingKey][settingKey2] = s[key];
-        } else {
+        } else if (path.length > 1) {
           settings[option][settingKey] = s[key];
+        } else {
+          settings[option] = s[key];
         }
       });
       if (settings.api.access_token) {
         zohoAxiosInstance.defaults.headers.common.Authorization = settings.api.access_token;
         setIsReady(true);
       }
-      console.log(s, settings);
     }
   }, [zohoSettings]);
 
@@ -285,7 +287,6 @@ function Main(props) {
 
   useEffect(() => {
     if (!!code && zohoSettings?.ID) {
-      console.count(code);
       authenticate();
     }
   }, [code, zohoSettings]);
@@ -297,7 +298,6 @@ function Main(props) {
   }, [isAuthenticating]);
 
   const handleAuth = (data, state) => {
-    console.log("authdata", data);
     settings.api.access_token = data.access_token;
     settings.api.refresh_token = data.refresh_token;
     settings.api.scope = data.scope;
@@ -540,6 +540,18 @@ function Main(props) {
     return initialAvailableStock;
   };
 
+  const getCommittedStock = () => {
+    let committed = 0;
+    if (committedSalesOrders?.length) {
+      committedSalesOrders.forEach((q) => {
+        q.salesorders.forEach((qq) => {
+          committed += qq.item_quantity;
+        });
+      });
+    }
+    return committed;
+  };
+
   const handleClick = (event, id) => {
     if (status === "Completed") return;
     const selectedIndex = selectedComponents.indexOf(id);
@@ -628,15 +640,16 @@ function Main(props) {
   const primaryWarehouse = compositeItem?.composite_item?.warehouses?.[0];
 
   if (isAuthenticating) {
-    return <>Authenticating...</>;
+    return (
+      <Box display="flex" alignItems="center" gap={2} p={3} component={Paper}>
+        <CircularProgress size={20} />
+        <Typography>Authenticating...</Typography>
+      </Box>
+    );
   }
 
   if (!assemblySKU) {
-    return (
-      <Alert severity="info">
-        {JSON.stringify(ZOHO.CREATOR.UTIL.getQueryParams())}Search an assembly item to create work ticket.
-      </Alert>
-    );
+    return <Alert severity="info">Search an assembly item to create work ticket.</Alert>;
   }
 
   if (
@@ -666,8 +679,9 @@ function Main(props) {
             /*global ZOHO */
             ZOHO.CREATOR.UTIL.navigateParentURL(param);
           }}
+          startIcon={<LoginOutlined />}
         >
-          Authenticate {JSON.stringify(ZOHO.CREATOR.UTIL.getQueryParams())}
+          Authenticate
         </Button>
       </Paper>
     );
@@ -725,15 +739,23 @@ function Main(props) {
                   <ListItemText
                     primary={workTicketItem.sku}
                     secondary={workTicketItem.name}
-                    primaryTypographyProps={{
-                      component: Link,
-                      href: getZohoInvetoryCompositeItemLink(workTicketItem.item_id, workTicketItem.sku),
-                      target: "_blank",
-                    }}
+                    {...(settings.composite_items.show_link
+                      ? {
+                          primaryTypographyProps: {
+                            component: Link,
+                            href: getZohoInventoryItemLink(workTicketItem.item_id, workTicketItem.sku),
+                            target: "_blank",
+                          },
+                        }
+                      : {})}
                   />
 
                   <ListItemText primary={workTicketItem.stock_on_hand} secondary="Qty On Hand" />
-                  <ListItemText primary={workTicketItem.available_stock} secondary="Qty Available" />
+                  <ListItemText
+                    primary={workTicketItem.available_stock - getCommittedStock()}
+                    secondary="Qty Available"
+                  />
+                  <ListItemText primary={getCommittedStock()} secondary="Committed" />
                   <ListItemText primary={workTicketItem.unit.toUpperCase()} secondary="UOM" />
                   <ListItemText primary={workTicketItem.reorder_level} secondary="Minimum Stock" />
                   <ListItemText primary={formatCurrency(workTicketItem.purchase_rate)} secondary="Purchase Cost" />
@@ -1032,7 +1054,14 @@ function Main(props) {
                         <TableCell padding="checkbox">
                           <Checkbox checked={selected} disabled={status === "Completed"} />
                         </TableCell>
-                        <TableCell>{sku}</TableCell>
+                        <TableCell>
+                          {sku}
+                          {settings.items.show_link && (
+                            <Link href={getZohoInventoryItemLink(item_id, sku, false)} target="_blank">
+                              <Launch fontSize="small" style={{ transform: "scale(0.7)" }} />
+                            </Link>
+                          )}
+                        </TableCell>
                         <TableCell>{name}</TableCell>
                         <TableCell>{formatCurrency(purchase_rate)}</TableCell>
                         {!!workTicketID && (

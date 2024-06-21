@@ -47,7 +47,7 @@ export function useGetItemSalesOrders(id) {
   return useSWR(
     !id
       ? null
-      : ["confirmed", "onhold"].map((status) =>
+      : ["confirmed"].map((status) =>
           `items/transactions/salesorders?page=1&per_page=200&sort_order=D&sort_column=date&item_id=${id}&status=${status}`.replaceAll(
             "&",
             "%26"
