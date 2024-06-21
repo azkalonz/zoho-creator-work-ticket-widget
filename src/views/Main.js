@@ -27,6 +27,7 @@ import {
   TableRow,
   TextField,
   Toolbar,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
@@ -1041,23 +1042,27 @@ function Main(props) {
               <TableHead>
                 <TableRow>
                   <TableCell padding="checkbox">
-                    <Checkbox
-                      disabled={status === "Completed"}
-                      indeterminate={selectedComponents.length > 0 && selectedComponents.length < components.length - 1}
-                      checked={selectedComponents.length > 0 && selectedComponents.length === components.length - 1}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedComponents(
-                            [...components]
-                              .reverse()
-                              .slice(0, components.length - 1)
-                              .map((c) => c.item_id)
-                          );
-                        } else {
-                          setSelectedComponents([]);
+                    <Tooltip title="Select at least (1) component." placement="bottom">
+                      <Checkbox
+                        disabled={status === "Completed"}
+                        indeterminate={
+                          selectedComponents.length > 0 && selectedComponents.length < components.length - 1
                         }
-                      }}
-                    />
+                        checked={selectedComponents.length > 0 && selectedComponents.length === components.length - 1}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedComponents(
+                              [...components]
+                                .reverse()
+                                .slice(0, components.length - 1)
+                                .map((c) => c.item_id)
+                            );
+                          } else {
+                            setSelectedComponents([]);
+                          }
+                        }}
+                      />
+                    </Tooltip>
                   </TableCell>
                   {selectedComponents.length === 0 && (
                     <>
