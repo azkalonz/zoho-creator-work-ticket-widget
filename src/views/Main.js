@@ -532,10 +532,12 @@ function Main(props) {
 
   const getSettings = () => (workTicketID ? "editing_work_ticket" : "creating_work_ticket");
 
-  const getAvailableStock = (quantityNeeded, initialAvailableStock, liveUpdate = true) => {
+  const getAvailableStock = (sku, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
     if (relatedWorkTickets?.length) {
       relatedWorkTickets.forEach((wt) => {
-        initialAvailableStock += parseInt(wt.Quantity) * quantityNeeded;
+        if (wt.SKU === sku) {
+          initialAvailableStock += parseInt(wt.Quantity) * quantityNeeded;
+        }
       });
     }
     if (!bundleId)
@@ -1024,13 +1026,13 @@ function Main(props) {
                       ...workTicketItem,
                     },
                     components: components.map((d) => {
-                      const { actual_available_stock, quantity, purchase_rate } = d;
+                      const { actual_available_stock, quantity, purchase_rate, sku } = d;
                       return {
                         ...d,
                         unitCost: formatCurrency(purchase_rate),
                         totalUnitCost: formatCurrency(purchase_rate * quantity * getQtyToBuild()),
                         required: quantity * getQtyToBuild(),
-                        available: getAvailableStock(quantity, actual_available_stock),
+                        available: getAvailableStock(sku, quantity, actual_available_stock),
                       };
                     }),
                     qtyToBuild: getQtyToBuild(),
@@ -1128,6 +1130,7 @@ function Main(props) {
                         <TableCell>{stock_on_hand}</TableCell>
                         <TableCell>
                           {getAvailableStock(
+                            sku,
                             quantity,
                             actual_available_stock,
                             settings[getSettings()].live_update.available
