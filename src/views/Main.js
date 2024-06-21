@@ -151,7 +151,7 @@ function Main(props) {
   );
 
   const relatedWorkTickets = useGetAllRecords(
-    !workTicketsComponentsUsedIn.data
+    !assemblySKU || !compositeItem.data?.composite_item?.mapped_items
       ? null
       : creatorConfig({
           reportName: "All_Work_Tickets",
@@ -809,7 +809,10 @@ function Main(props) {
                       : {})}
                   />
 
-                  <ListItemText primary={workTicketItem.stock_on_hand} secondary="Qty On Hand" />
+                  <ListItemText
+                    primary={parseFloat(workTicketItem.stock_on_hand).toFixed(settings.quantity_precision)}
+                    secondary="Qty On Hand"
+                  />
                   <ListItemText
                     primary={workTicketItem.available_stock - getCommittedStock()}
                     secondary="Qty Available"
@@ -1154,7 +1157,8 @@ function Main(props) {
                         </TableCell>
                         <TableCell>
                           {compositeItem.isValidating && <Skeleton />}
-                          {!compositeItem.isValidating && stock_on_hand}
+                          {!compositeItem.isValidating &&
+                            parseFloat(stock_on_hand).toFixed(settings.quantity_precision)}
                         </TableCell>
                         <TableCell>
                           {compositeItem.isValidating && <Skeleton />}
