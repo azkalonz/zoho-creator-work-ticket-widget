@@ -1069,7 +1069,7 @@ function Main(props) {
                       <TableCell>Item</TableCell>
                       <TableCell>Description</TableCell>
                       <TableCell>Unit Cost</TableCell>
-                      {!!workTicketID && <TableCell>Total Unit Cost</TableCell>}
+                      <TableCell>Total Unit Cost</TableCell>
                       <TableCell>Required</TableCell>
                       <TableCell>On Hand</TableCell>
                       <TableCell>Available</TableCell>
