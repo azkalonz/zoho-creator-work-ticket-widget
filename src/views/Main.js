@@ -83,33 +83,18 @@ function Main(props) {
   const componentToPrint = useRef();
 
   const { setDialog, setOpen } = useConfirmDialog();
-  const {
-    trigger: addWorkTicket,
-    isMutating: isAddingWorkTicket,
-    data: addedWorkTicket,
-    error: workTicketError,
-  } = useAddRecordMutation();
-  const {
-    trigger: updateWorkTicket,
-    isMutating: isUpdatingWorkTicket,
-    data: savedWorkTicket,
-    error: workTicketSaveError,
-  } = useUpdateRecordMutation();
+  const addWorkTicket = useAddRecordMutation();
+  const updateWorkTicket = useUpdateRecordMutation();
 
-  const {
-    trigger: updateSettings,
-    isMutating: isSettingsUpdating,
-    data: savedSettings,
-    error: settingsSaveError,
-  } = useUpdateRecordMutation();
+  const updateSettings = useUpdateRecordMutation();
 
-  const { trigger: createBundle } = useCreateBundleMutation();
-  const { trigger: deleteBundle } = useDeleteBundleMutation(bundleId);
+  const createBundle = useCreateBundleMutation();
+  const deleteBundle = useDeleteBundleMutation(bundleId);
 
-  const { trigger: authenticate, data: authenticateData, isMutating: isAuthenticating } = useAuthenticateMutation(code);
-  const { trigger: refresh, data: refreshData, isMutating: isRefreshing } = useRefreshMutation();
+  const authenticate = useAuthenticateMutation(code);
+  const refresh = useRefreshMutation();
 
-  const { data: _zohoSettings, isLoading: _isZohoSettingsLoading } = useGetAllRecords(
+  const _zohoSettings = useGetAllRecords(
     creatorConfig({
       reportName: "All_Settings",
       page: 1,
@@ -117,18 +102,14 @@ function Main(props) {
     })
   );
 
-  const { data: zohoSettings, isLoading: isZohoSettingsLoading } = useGetRecordById(
-    !_zohoSettings?.length ? null : "All_Settings",
-    _zohoSettings?.[0].ID
+  const zohoSettings = useGetRecordById(
+    !_zohoSettings.data?.length ? null : "All_Settings",
+    _zohoSettings.data?.[0].ID
   );
-  const [isReady, setIsReady] = useState(!!zohoSettings?.api__access_token);
+  const [isReady, setIsReady] = useState(!!zohoSettings.data?.api__access_token);
 
-  const {
-    data: currentWorkTicket,
-    isLoading: isCurrentWorkTicketLoading,
-    mutate: mutateCurrentWorkTicket,
-  } = useGetRecordById("All_Work_Tickets", workTicketID);
-  const { data: lastWorkTicket, isLoading: isLastWorkTicketLoading } = useGetAllRecords(
+  const currentWorkTicket = useGetRecordById("All_Work_Tickets", workTicketID);
+  const lastWorkTicket = useGetAllRecords(
     !assemblySKU
       ? null
       : creatorConfig({
@@ -138,53 +119,51 @@ function Main(props) {
         })
   );
 
-  const { data: committedSalesOrders } = useGetItemSalesOrders(!isReady ? null : assemblyID);
+  const committedSalesOrders = useGetItemSalesOrders(!isReady ? null : assemblyID);
 
-  const {
-    data: compositeItem,
-    mutate: mutateCompositeItem,
-    isLoading: isCompositeItemLoading,
-  } = useGetCompositeItem(!isReady ? null : assemblyID);
+  const compositeItem = useGetCompositeItem(!isReady ? null : assemblyID);
 
-  const { data: relatedAssemblies } = useGetAllRecords(
-    !assemblySKU || !compositeItem?.composite_item?.mapped_items
+  const relatedAssemblies = useGetAllRecords(
+    !assemblySKU || !compositeItem.data?.composite_item?.mapped_items
       ? null
       : creatorConfig({
           reportName: "All_Composite_Items",
           page: 1,
-          pageSize: 189,
-          criteria: `${compositeItem?.composite_item?.mapped_items
+          pageSize: 200,
+          criteria: `${compositeItem.data?.composite_item?.mapped_items
+            ?.filter((q) => !!q.inventory_account_id)
             .map((q) => `Mapped_Item_ID=="${q.item_id}"`)
             .join(" || ")}`,
         })
   );
 
-  const { data: workTicketsComponentsUsedIn } = useGetAllRecords(
-    !relatedAssemblies
+  const workTicketsComponentsUsedIn = useGetAllRecords(
+    !relatedAssemblies.data
       ? null
       : creatorConfig({
-          reportName: "All_Work_Tickets",
+          reportName: "Public_Work_Tickets",
           page: 1,
-          pageSize: 199,
-          criteria: `${Array.from(new Set(relatedAssemblies.map((q) => q.SKU)))
-            .map((q) => `(SKU=="${q}" && Status=="Open"${workTicketID ? " && ID!=" + workTicketID : ""})`)
+          pageSize: 200,
+          criteria: `${Array.from(new Set(relatedAssemblies.data.map((q) => q.SKU)))
+            .map((q) => `(SKU=="${q}" && Status=="Open" ${workTicketID ? `&& ID!=${workTicketID}` : ""})`)
             .join(" || ")}`,
         })
   );
 
-  const { data: relatedWorkTickets, isLoading: isRelatedWorkTicketsLoading } = useGetAllRecords(
-    !workTicketsComponentsUsedIn
+  const relatedWorkTickets = useGetAllRecords(
+    !workTicketsComponentsUsedIn.data
       ? null
       : creatorConfig({
-          reportName: "All_Work_Tickets",
+          reportName: "Public_Work_Tickets",
           page: 1,
           pageSize: 200,
-          criteria: `${compositeItem?.composite_item?.mapped_items
+          criteria: `${compositeItem.data?.composite_item?.mapped_items
+            ?.filter((q) => !!q.inventory_account_id)
             .map((q) => `(SKU=="${q.sku}" && Status=="Open")`)
             .join(" || ")}`,
         })
   );
-  const { data: users, isLoading: isUsersLoading } = useGetAllRecords(
+  const users = useGetAllRecords(
     !assemblySKU
       ? null
       : creatorConfig({
@@ -193,66 +172,66 @@ function Main(props) {
           pageSize: 200,
         })
   );
-  const {
-    data: assemblyItem,
-    mutate: mutateAssemblyItem,
-    isLoading: isAssemblyItemLoading,
-  } = useSearchItem(!isReady ? null : assemblySKU);
+  const assemblyItem = useSearchItem(!isReady ? null : assemblySKU);
 
   useEffect(() => {
-    if (!isAddingWorkTicket) {
+    if (!addWorkTicket.isMutating) {
       setOpen(false);
     }
-  }, [isAddingWorkTicket]);
+  }, [addWorkTicket.isMutating]);
 
   useEffect(() => {
-    if (assemblyItem?.error === true && settings.api.refresh_token && assemblyItem.message == "Unauthorized.") {
-      refresh();
-    } else if (assemblyItem?.error === true) {
-      setError(assemblyItem.message);
+    if (
+      assemblyItem.data?.error === true &&
+      settings.api.refresh_token &&
+      assemblyItem.data.message == "Unauthorized."
+    ) {
+      refresh.trigger();
+    } else if (assemblyItem.data?.error === true) {
+      setError(assemblyItem.data.message);
     }
-  }, [assemblyItem]);
+  }, [assemblyItem.data]);
 
   useEffect(() => {
-    if (refreshData?.access_token) {
-      handleAuth(refreshData, encodeURI(JSON.stringify({ work_ticket_id, assembly_id, assembly_sku })));
+    if (refresh.data?.access_token) {
+      handleAuth(refresh.data, encodeURI(JSON.stringify({ work_ticket_id, assembly_id, assembly_sku })));
     }
-  }, [refreshData]);
+  }, [refresh.data]);
 
   useEffect(() => {
-    if (addedWorkTicket?.data?.ID) {
+    if (addWorkTicket.data?.data?.ID) {
       const param = {
         action: "open",
-        url: `#Page:Create_Work_Ticket?work_ticket_id=${addedWorkTicket.data.ID}`,
+        url: `#Page:Create_Work_Ticket?work_ticket_id=${addWorkTicket.data.data.ID}`,
         window: "same",
       };
       /*global ZOHO */
       ZOHO.CREATOR.UTIL.navigateParentURL(param);
     }
-  }, [addedWorkTicket]);
+  }, [addWorkTicket.data]);
 
   useEffect(() => {
-    if (!isUpdatingWorkTicket) {
+    if (!updateWorkTicket.isMutating) {
       setOpen(false);
-      if (!savedWorkTicket?.error) {
-        if (savedWorkTicket?.data) {
+      if (!updateWorkTicket.data?.error) {
+        if (updateWorkTicket.data?.data) {
           setToastSuccess(true);
         }
       } else {
-        setError(JSON.stringify(savedWorkTicket.error));
+        setError(JSON.stringify(updateWorkTicket.data.error));
       }
     }
-  }, [savedWorkTicket, isUpdatingWorkTicket]);
+  }, [updateWorkTicket.data, updateWorkTicket.isMutating]);
 
   useEffect(() => {
-    if (!isCurrentWorkTicketLoading && currentWorkTicket?.ID) {
-      handleSetInitialValues(currentWorkTicket);
+    if (!currentWorkTicket.isLoading && currentWorkTicket.data?.ID) {
+      handleSetInitialValues(currentWorkTicket.data);
     }
-  }, [currentWorkTicket, isCurrentWorkTicketLoading]);
+  }, [currentWorkTicket.data, currentWorkTicket.isLoading]);
 
   useEffect(() => {
-    if (zohoSettings) {
-      let s = { ...zohoSettings };
+    if (zohoSettings.data) {
+      let s = { ...zohoSettings.data };
       delete s.ID;
       Object.keys(s).map((key) => {
         let path = key.split("__");
@@ -275,60 +254,60 @@ function Main(props) {
         setIsReady(true);
       }
     }
-  }, [zohoSettings]);
+  }, [zohoSettings.data]);
 
   useEffect(() => {
-    if (!currentWorkTicket && lastWorkTicket?.length) {
-      setWorkTicketNumber(lastWorkTicket?.length ? parseInt(lastWorkTicket[0].Work_Ticket_No) + 1 : 1);
-    } else if (currentWorkTicket) {
-      setWorkTicketNumber(currentWorkTicket.Work_Ticket_No);
+    if (!currentWorkTicket.data && lastWorkTicket.data?.length) {
+      setWorkTicketNumber(lastWorkTicket.data?.length ? parseInt(lastWorkTicket.data[0].Work_Ticket_No) + 1 : 1);
+    } else if (currentWorkTicket.data) {
+      setWorkTicketNumber(currentWorkTicket.data.Work_Ticket_No);
     }
-  }, [lastWorkTicket, currentWorkTicket]);
+  }, [lastWorkTicket.data, currentWorkTicket.data]);
 
   useEffect(() => {
-    if (workTicketError) {
-      setError(workTicketError.responseText);
-    } else if (workTicketSaveError) {
-      setError(workTicketSaveError.responseText);
-    } else if (settingsSaveError) {
-      setError(settingsSaveError.responseText);
+    if (addWorkTicket.error) {
+      setError(addWorkTicket.error.responseText);
+    } else if (updateWorkTicket.error) {
+      setError(updateWorkTicket.error.responseText);
+    } else if (updateSettings.error) {
+      setError(updateSettings.error.responseText);
     }
-  }, [workTicketError, workTicketSaveError, settingsSaveError]);
+  }, [addWorkTicket.error, updateWorkTicket.error, updateSettings.error]);
 
   useEffect(() => {
     if (
-      !isCompositeItemLoading &&
-      compositeItem?.composite_item?.mapped_items &&
-      (workTicketID ? currentWorkTicket?.ID : true)
+      !compositeItem.isLoading &&
+      compositeItem.data?.composite_item?.mapped_items &&
+      (workTicketID ? currentWorkTicket.data?.ID : true)
     ) {
-      let excluded = currentWorkTicket?.Excluded_Components || "";
+      let excluded = currentWorkTicket.data?.Excluded_Components || "";
       excluded = excluded.split(",");
 
-      setComponents(compositeItem?.composite_item?.mapped_items?.filter((q) => excluded.indexOf(q.item_id) < 0));
+      setComponents(compositeItem.data?.composite_item?.mapped_items?.filter((q) => excluded.indexOf(q.item_id) < 0));
       setExcludedComponents(excluded);
     }
-  }, [compositeItem, currentWorkTicket, isCompositeItemLoading]);
+  }, [compositeItem.data, currentWorkTicket.data, compositeItem.isLoading]);
 
   useEffect(() => {
-    if (!!code && zohoSettings?.ID) {
-      authenticate();
+    if (!!code && zohoSettings.data?.ID) {
+      authenticate.trigger();
     }
-  }, [code, zohoSettings]);
+  }, [code, zohoSettings.data]);
 
   useEffect(() => {
-    if (authenticateData?.access_token) {
-      handleAuth(authenticateData, state);
+    if (authenticate.data?.access_token) {
+      handleAuth(authenticate.data, state);
     }
-  }, [isAuthenticating]);
+  }, [authenticate.isMutating]);
 
   const handleAuth = (data, state) => {
     settings.api.access_token = data.access_token;
     settings.api.refresh_token = data.refresh_token;
     settings.api.scope = data.scope;
-    updateSettings(
+    updateSettings.trigger(
       creatorConfig({
         reportName: "All_Settings",
-        id: zohoSettings.ID,
+        id: zohoSettings.data.ID,
         data: {
           data: {
             api__access_token: data.access_token,
@@ -383,10 +362,11 @@ function Main(props) {
         Status: status,
         Bundle_ID: forceBundleId || bundleId,
         Excluded_Components: excludedComponents.join(","),
+        Included_Components: components.map((q) => q.item_id + ":" + q.quantity).join(","),
       },
     };
     if (!formData.data.Created_By) {
-      const user = users.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser);
+      const user = users.data.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser);
       formData.data.Created_By = user?.ID;
     }
     if (ticketStarted) {
@@ -396,7 +376,7 @@ function Main(props) {
       formData.data.Ticket_Completed = moment(ticketCompleted).format("DD-MMM-YYYY");
     }
 
-    if (currentWorkTicket?.ID) {
+    if (currentWorkTicket.data?.ID) {
       if (!bundleId && status === "Completed" && forceBundleId === null) {
         setDialog({
           title: "Work Ticket Completion",
@@ -439,10 +419,10 @@ function Main(props) {
           title: "Saving work ticket...",
           controlled: true,
         });
-        updateWorkTicket(
+        updateWorkTicket.trigger(
           creatorConfig({
             reportName: "All_Work_Tickets",
-            id: currentWorkTicket.ID,
+            id: currentWorkTicket.data.ID,
             data: formData,
             callback,
           })
@@ -453,7 +433,7 @@ function Main(props) {
         title: "Creating work ticket...",
         controlled: true,
       });
-      addWorkTicket(
+      addWorkTicket.data(
         creatorConfig({
           formName: "Work_Ticket",
           data: formData,
@@ -464,7 +444,7 @@ function Main(props) {
 
   const __handleDelete = () => {
     if (workTicketID) {
-      updateWorkTicket(
+      updateWorkTicket.trigger(
         creatorConfig({
           reportName: "All_Work_Tickets",
           id: workTicketID,
@@ -474,7 +454,7 @@ function Main(props) {
             },
           },
           callback: () => {
-            deleteBundle({
+            deleteBundle.trigger({
               method: "POST",
               callback: (response) => {
                 if (response?.code !== 0) {
@@ -541,47 +521,57 @@ function Main(props) {
   };
 
   const getRequiredQuantity = (quantity, liveUpdate = true) =>
-    quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1);
+    parseFloat(quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1)).toFixed(
+      parseInt(settings.quantity_precision)
+    );
 
   const getTotalCost = (liveUpdate = true) =>
     components?.reduce(
       (acc, obj) =>
-        acc + obj.purchase_rate * obj.quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1),
+        acc + obj.purchase_rate * obj.quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1),
       0
     ) || 0;
 
   const getTotalUnitCost = (purchaseRate, quantity, liveUpdate = false) => {
-    return formatCurrency(purchaseRate * quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1));
+    return formatCurrency(
+      purchaseRate * quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1)
+    );
   };
   const getSettings = () => (workTicketID ? "editing_work_ticket" : "creating_work_ticket");
 
-  const getAvailableStock = (sku, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
-    if (relatedWorkTickets?.length) {
-      relatedWorkTickets.forEach((wt) => {
+  const getAvailableStock = (sku, item_id, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
+    if (!initialAvailableStock) return "";
+    if (relatedWorkTickets.data?.length) {
+      relatedWorkTickets.data.forEach((wt) => {
         if (wt.SKU === sku) {
-          initialAvailableStock += parseInt(wt.Quantity) * quantityNeeded;
+          initialAvailableStock += parseFloat(wt.Quantity) * quantityNeeded;
         }
       });
     }
-    if (workTicketsComponentsUsedIn?.length) {
-      workTicketsComponentsUsedIn.forEach((wt) => {
-        initialAvailableStock -= parseInt(wt.Quantity) * quantityNeeded;
+    if (workTicketsComponentsUsedIn.data?.length) {
+      workTicketsComponentsUsedIn.data.forEach((wt) => {
+        let wtd = wt.Included_Components.split(",").map((q) => ({ id: q.split(":")[0], quantity: q.split(":")[1] }));
+        let wtt = wtd.find((q) => q.id === item_id);
+        if (wtt) {
+          initialAvailableStock -= parseFloat(wt.Quantity) * wtt.quantity;
+        }
       });
     }
     if (!bundleId)
       initialAvailableStock =
-        parseInt(initialAvailableStock) -
-        parseInt(quantityNeeded) * parseInt(liveUpdate ? getQtyToBuild() : parseInt(currentWorkTicket?.Quantity) || 0);
+        parseFloat(initialAvailableStock) -
+        parseFloat(quantityNeeded) *
+          parseFloat(liveUpdate ? getQtyToBuild() : parseFloat(currentWorkTicket.data?.Quantity) || 0);
 
     if (isNaN(initialAvailableStock)) return "";
 
-    return initialAvailableStock;
+    return parseFloat(initialAvailableStock).toFixed(settings.quantity_precision);
   };
 
   const getCommittedStock = () => {
     let committed = 0;
-    if (committedSalesOrders?.length) {
-      committedSalesOrders.forEach((q) => {
+    if (committedSalesOrders.data?.length) {
+      committedSalesOrders.data.forEach((q) => {
         q.salesorders.forEach((qq) => {
           committed += qq.item_quantity;
         });
@@ -619,15 +609,17 @@ function Main(props) {
     let selected = [...selectedComponents, ...excludedComponents];
     setComponents(components.filter((q) => selected.indexOf(q.item_id) < 0));
     setExcludedComponents(
-      compositeItem?.composite_item?.mapped_items?.filter((q) => selected.indexOf(q.item_id) >= 0).map((q) => q.item_id)
+      compositeItem.data?.composite_item?.mapped_items
+        ?.filter((q) => selected.indexOf(q.item_id) >= 0)
+        .map((q) => q.item_id)
     );
     setSelectedComponents([]);
   };
 
   const handleResetComponents = () => {
-    if (compositeItem?.composite_item?.mapped_items) {
+    if (compositeItem.data?.composite_item?.mapped_items) {
       setExcludedComponents([]);
-      setComponents(compositeItem?.composite_item?.mapped_items);
+      setComponents(compositeItem.data?.composite_item?.mapped_items);
     }
   };
 
@@ -656,7 +648,7 @@ function Main(props) {
       })),
       is_completed: true,
     };
-    createBundle({
+    createBundle.trigger({
       method: "POST",
       data,
       callback: (response) => {
@@ -681,9 +673,9 @@ function Main(props) {
         id: workTicketID,
       })
     );
-    mutateCurrentWorkTicket(updated);
-    mutateCompositeItem();
-    mutateAssemblyItem();
+    currentWorkTicket.mutate(updated);
+    compositeItem.mutate();
+    assemblyItem.mutate();
   };
 
   const handleSetInitialValues = (data) => {
@@ -700,10 +692,10 @@ function Main(props) {
     setBundleId(data.Bundle_ID);
   };
 
-  const workTicketItem = assemblyItem?.items?.[0];
-  const primaryWarehouse = compositeItem?.composite_item?.warehouses?.[0];
+  const workTicketItem = assemblyItem.data?.items?.[0];
+  const primaryWarehouse = compositeItem.data?.composite_item?.warehouses?.[0];
 
-  if (isAuthenticating) {
+  if (authenticate.isMutating) {
     return (
       <Box display="flex" alignItems="center" gap={2} p={3} component={Paper}>
         <CircularProgress size={20} />
@@ -717,14 +709,14 @@ function Main(props) {
   }
 
   if (
-    isAssemblyItemLoading ||
-    isCompositeItemLoading ||
-    isLastWorkTicketLoading ||
-    isUsersLoading ||
-    isCurrentWorkTicketLoading ||
-    isRelatedWorkTicketsLoading ||
-    _isZohoSettingsLoading ||
-    isZohoSettingsLoading
+    assemblyItem.isLoading ||
+    compositeItem.isLoading ||
+    lastWorkTicket.isLoading ||
+    users.isLoading ||
+    currentWorkTicket.isLoading ||
+    relatedWorkTickets.isLoading ||
+    _zohoSettings.isLoading ||
+    zohoSettings.isLoading
   ) {
     return <LinearProgress />;
   }
@@ -751,7 +743,7 @@ function Main(props) {
     );
   }
 
-  if (assemblyItem?.items?.length <= 0) {
+  if (assemblyItem.data?.items?.length <= 0) {
     return <Alert severity="error">{assemblySKU} was not found!</Alert>;
   }
 
@@ -775,7 +767,7 @@ function Main(props) {
               New
             </Button>
             <Button
-              disabled={!components || !currentWorkTicket || (status === "Completed" && !bundleId)}
+              disabled={!components || !currentWorkTicket.data || (status === "Completed" && !bundleId)}
               startIcon={<PrintOutlined />}
               onClick={() => {
                 handleSave(null, () => {
@@ -843,15 +835,15 @@ function Main(props) {
               }}
             >
               <Autocomplete
-                options={users}
+                options={users.data}
                 getOptionLabel={(option) => option.Name.display_value}
                 sx={{ width: 300 }}
                 disableClearable
                 disabled={!!bundleId}
                 value={
                   createdBy
-                    ? users.find((q) => q.ID === createdBy)
-                    : users.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser)
+                    ? users.data.find((q) => q.ID === createdBy)
+                    : users.data.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser)
                 }
                 renderInput={(params) => <TextField {...params} label="Created By" variant="outlined" />}
                 renderOption={(props, option) => (
@@ -898,7 +890,7 @@ function Main(props) {
                 }}
               >
                 <MenuItem value="Open">Open</MenuItem>
-                <MenuItem value="Completed" disabled={!currentWorkTicket}>
+                <MenuItem value="Completed" disabled={!currentWorkTicket.data}>
                   Completed
                 </MenuItem>
               </Select>
@@ -937,17 +929,19 @@ function Main(props) {
               id="qty-to-build"
               variant="outlined"
               type="number"
-              value={qtyToBuild}
+              defaultValue={parseFloat(qtyToBuild).toFixed(settings.quantity_precision)}
               disabled={status === "Completed"}
               onChange={(e) => {
                 if (e.target.value >= 999999) {
                   setQtyToBuild(999999);
+                  e.target.value = 999999;
                 } else {
                   setQtyToBuild(e.target.value);
                 }
               }}
               onBlur={(e) => {
                 if (e.target.value <= 0) {
+                  e.target.value = 1;
                   setQtyToBuild(1);
                 }
               }}
@@ -956,13 +950,13 @@ function Main(props) {
                 maxWidth: 258,
               }}
             />
-            {currentWorkTicket?.Bundle_ID && (
+            {currentWorkTicket.data?.Bundle_ID && (
               <>
                 <InputLabel shrink={false} htmlFor="bundle-id">
                   <Typography>
                     Bundle ID
                     <Link
-                      href={getZohoInventoryBundleLink(assemblyID, currentWorkTicket?.Bundle_ID, assemblySKU)}
+                      href={getZohoInventoryBundleLink(assemblyID, currentWorkTicket.data?.Bundle_ID, assemblySKU)}
                       target="_blank"
                     >
                       <Launch style={{ transform: "scale(0.7)" }} />
@@ -981,7 +975,7 @@ function Main(props) {
                     maxWidth: 258,
                   }}
                   onBlur={(e) => {
-                    if (e.target.value !== currentWorkTicket.Bundle_ID) {
+                    if (e.target.value !== currentWorkTicket.data.Bundle_ID) {
                       setDialog({
                         open: true,
                         title: "Confirm Bundle ID",
@@ -992,8 +986,8 @@ function Main(props) {
                         ),
                         onClose: (value) => {
                           if (value !== true) {
-                            setBundleId(currentWorkTicket.Bundle_ID);
-                            setStatus(currentWorkTicket?.Status);
+                            setBundleId(currentWorkTicket.data.Bundle_ID);
+                            setStatus(currentWorkTicket.data?.Status);
                           } else {
                             setStatus("Open");
                           }
@@ -1018,8 +1012,8 @@ function Main(props) {
                         ),
                       });
                     } else {
-                      setBundleId(currentWorkTicket.Bundle_ID);
-                      setStatus(currentWorkTicket?.Status);
+                      setBundleId(currentWorkTicket.data.Bundle_ID);
+                      setStatus(currentWorkTicket.data?.Status);
                     }
                   }}
                 />
@@ -1027,7 +1021,7 @@ function Main(props) {
             )}
           </Grid>
           <Grid item xs={12} mt={3}>
-            {components?.length !== compositeItem?.composite_item?.mapped_items?.length && (
+            {components?.length !== compositeItem.data?.composite_item?.mapped_items?.length && (
               <Alert severity="info">
                 {!!bundleId
                   ? "One or more components were not included in the bundle."
@@ -1037,30 +1031,30 @@ function Main(props) {
                 </Button>
               </Alert>
             )}
-            {!!components && !!currentWorkTicket && (
+            {!!components && !!currentWorkTicket.data && (
               <div style={{ display: "none" }}>
                 <PDFTemplate
                   componentRef={componentToPrint}
                   workTicket={{
                     currentWorkTicket: {
                       ...{
-                        ...currentWorkTicket,
+                        ...currentWorkTicket.data,
                         Ticket_Completed: ticketCompleted,
                         Ticket_Started: ticketStarted,
-                        Created_By: users.find((q) => q.ID === createdBy),
+                        Created_By: users.data.find((q) => q.ID === createdBy),
                         Date_field: workTicketDate,
                         Status: status,
                       },
                       ...workTicketItem,
                     },
                     components: components.map((d) => {
-                      const { actual_available_stock, quantity, purchase_rate, sku } = d;
+                      const { actual_available_stock, quantity, purchase_rate, sku, item_id } = d;
                       return {
                         ...d,
                         unitCost: formatCurrency(purchase_rate),
                         totalUnitCost: formatCurrency(purchase_rate * quantity * getQtyToBuild()),
                         required: quantity * getQtyToBuild(),
-                        available: getAvailableStock(sku, quantity, actual_available_stock),
+                        available: getAvailableStock(sku, item_id, quantity, actual_available_stock),
                       };
                     }),
                     qtyToBuild: getQtyToBuild(),
@@ -1159,6 +1153,7 @@ function Main(props) {
                         <TableCell>
                           {getAvailableStock(
                             sku,
+                            item_id,
                             quantity,
                             actual_available_stock,
                             settings[getSettings()].live_update.available

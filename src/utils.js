@@ -22,8 +22,8 @@ export function formatCurrency(value) {
   var number = value;
 
   var options = {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: settings.quantity_precision,
+    maximumFractionDigits: settings.quantity_precision,
     style: "currency",
     currency: "USD",
   };

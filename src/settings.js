@@ -1,5 +1,6 @@
 export const settings = {
   org_id: 789146207,
+  quantity_precision: 2,
   items: {
     show_link: false,
   },
