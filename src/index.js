@@ -4,7 +4,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { SWRConfig } from "swr";
 import App from "./App";
-import { disableRevalidation } from "./helpers";
+import { disableRevalidation } from "./utils";
 import "./index.css";
 import reportWebVitals from "./reportWebVitals";
 import fetcher from "./services/fetcher";

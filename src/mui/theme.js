@@ -40,5 +40,19 @@ export default createTheme({
         },
       },
     },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          verticalAlign: "top",
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          marginTop: "0!important",
+        },
+      },
+    },
   },
 });

@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import fetcher, { zohoApiFetcher } from "./fetcher";
+import fetcher, { zohoApiFetcher, zohoMultiApiFetcher } from "./fetcher";
 import creatorConfig from "../lib/creatorConfig";
 
 export function useGetAllRecords(config) {
@@ -26,15 +26,33 @@ export function useGetRecordCount(config) {
 }
 
 export function useSearchItem(keyword) {
-  return useSWR(!keyword ? null : `items?search_text=${keyword}&page=1&per_page=10`, zohoApiFetcher, {
+  return useSWR(
+    !keyword ? null : `items?search_text=${keyword}&page=1&per_page=10`,
+    (url) => zohoApiFetcher(url, { api: "ZOHO_INVENTORY" }),
+    {
+      shouldRetryOnError: false,
+      errorRetryCount: 1,
+    }
+  );
+}
+
+export function useGetCompositeItem(id) {
+  return useSWR(id ? `compositeitems/${id}` : null, (url) => zohoApiFetcher(url, { api: "ZOHO_INVENTORY" }), {
     shouldRetryOnError: false,
     errorRetryCount: 1,
   });
 }
 
-export function useGetCompositeItem(id) {
-  return useSWR(id ? `compositeitems/${id}` : null, zohoApiFetcher, {
-    shouldRetryOnError: false,
-    errorRetryCount: 1,
-  });
+export function useGetItemSalesOrders(id) {
+  return useSWR(
+    !id
+      ? null
+      : ["confirmed", "onhold"].map((status) =>
+          `items/transactions/salesorders?page=1&per_page=200&sort_order=D&sort_column=date&item_id=${id}&status=${status}`.replaceAll(
+            "&",
+            "%26"
+          )
+        ),
+    zohoMultiApiFetcher
+  );
 }
