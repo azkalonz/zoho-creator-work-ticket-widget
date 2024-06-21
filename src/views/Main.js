@@ -790,7 +790,7 @@ function Main(props) {
                     secondary="Qty Available"
                   />
                   <ListItemText primary={getCommittedStock()} secondary="Committed" />
-                  <ListItemText primary={workTicketItem.reorder_level} secondary="Minimum Stock" />
+                  <ListItemText primary={workTicketItem.reorder_level || "N/A"} secondary="Minimum Stock" />
                   <ListItemText primary={workTicketItem.unit.toUpperCase()} secondary="UOM" />
                   <ListItemText primary={formatCurrency(workTicketItem.purchase_rate)} secondary="Purchase Cost" />
                   <ListItemText
