@@ -540,7 +540,7 @@ function Main(props) {
   const getSettings = () => (workTicketID ? "editing_work_ticket" : "creating_work_ticket");
 
   const getAvailableStock = (sku, item_id, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
-    if (!initialAvailableStock) return "";
+    if (initialAvailableStock === "") return "";
     if (relatedWorkTickets.data?.length) {
       relatedWorkTickets.data.forEach((wt) => {
         if (wt.SKU === sku) {
@@ -666,6 +666,7 @@ function Main(props) {
   };
 
   const handleRefreshData = async () => {
+    currentWorkTicket.mutate({});
     const updated = await fetcher(
       "getRecordById",
       creatorConfig({
@@ -788,11 +789,11 @@ function Main(props) {
         <Grid container p={4}>
           <Grid item xs={8}>
             <List style={{ flexDirection: "row", display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {!workTicketItem &&
-                new Array(6)
+              {assemblyItem.isValidating &&
+                new Array(5)
                   .fill(0)
                   .map((a, i) => <Skeleton width={100 / 6 + "%"} height={80} animation="wave" key={i} />)}
-              {!!workTicketItem && (
+              {!assemblyItem.isValidating && (
                 <>
                   <ListItemText
                     primary={workTicketItem.sku}
@@ -1151,15 +1152,20 @@ function Main(props) {
                         <TableCell>
                           {getRequiredQuantity(quantity, settings[getSettings()].live_update.required)}
                         </TableCell>
-                        <TableCell>{stock_on_hand}</TableCell>
                         <TableCell>
-                          {getAvailableStock(
-                            sku,
-                            item_id,
-                            quantity,
-                            actual_available_stock,
-                            settings[getSettings()].live_update.available
-                          )}
+                          {compositeItem.isValidating && <Skeleton />}
+                          {!compositeItem.isValidating && stock_on_hand}
+                        </TableCell>
+                        <TableCell>
+                          {compositeItem.isValidating && <Skeleton />}
+                          {!compositeItem.isValidating &&
+                            getAvailableStock(
+                              sku,
+                              item_id,
+                              quantity,
+                              actual_available_stock,
+                              settings[getSettings()].live_update.available
+                            )}
                         </TableCell>
                       </TableRow>
                     );
