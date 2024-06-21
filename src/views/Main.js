@@ -535,7 +535,7 @@ function Main(props) {
   const getAvailableStock = (quantityNeeded, initialAvailableStock, liveUpdate = true) => {
     if (relatedWorkTickets?.length) {
       relatedWorkTickets.forEach((wt) => {
-        initialAvailableStock -= parseInt(wt.Quantity) * quantityNeeded;
+        initialAvailableStock += parseInt(wt.Quantity) * quantityNeeded;
       });
     }
     if (!bundleId)
