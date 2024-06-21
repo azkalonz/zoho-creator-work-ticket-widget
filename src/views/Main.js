@@ -814,7 +814,14 @@ function Main(props) {
                     secondary="Qty On Hand"
                   />
                   <ListItemText
-                    primary={workTicketItem.available_stock - getCommittedStock()}
+                    primary={
+                      workTicketItem.available_stock -
+                      getCommittedStock() +
+                      relatedWorkTickets.data?.reduce(
+                        (acc, obj) => (obj.SKU === workTicketItem.sku ? acc + obj.Quantity : acc),
+                        0
+                      )
+                    }
                     secondary="Qty Available"
                   />
                   <ListItemText primary={getCommittedStock()} secondary="Committed" />
