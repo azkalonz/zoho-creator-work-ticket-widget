@@ -213,12 +213,12 @@ function Main(props) {
   useEffect(() => {
     if (!updateWorkTicket.isMutating) {
       setOpen(false);
-      if (!updateWorkTicket.data?.error) {
-        if (updateWorkTicket.data?.data) {
+      if (!updateWorkTicket.error) {
+        if (updateWorkTicket.data) {
           setToastSuccess(true);
         }
       } else {
-        setError(JSON.stringify(updateWorkTicket.data.error));
+        setError(JSON.stringify(updateWorkTicket.error));
       }
     }
   }, [updateWorkTicket.data, updateWorkTicket.isMutating]);
