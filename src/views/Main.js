@@ -146,8 +146,22 @@ function Main(props) {
     isLoading: isCompositeItemLoading,
   } = useGetCompositeItem(!isReady ? null : assemblyID);
 
-  const { data: relatedWorkTickets, isLoading: isRelatedWorkTicketsLoading } = useGetAllRecords(
+  const { data: relatedAssemblies } = useGetAllRecords(
     !assemblySKU || !compositeItem?.composite_item?.mapped_items
+      ? null
+      : creatorConfig({
+          reportName: "All_Composite_Items",
+          page: 1,
+          pageSize: 200,
+          criteria: `${compositeItem?.composite_item?.mapped_items
+            .map((q) => `Mapped_Item_ID=="${q.item_id}"`)
+            .join(" || ")}`,
+        })
+  );
+  console.log("tt", relatedAssemblies);
+
+  const { data: relatedWorkTickets, isLoading: isRelatedWorkTicketsLoading } = useGetAllRecords(
+    !assemblySKU || !compositeItem?.composite_item?.mapped_items || !relatedAssemblies
       ? null
       : creatorConfig({
           reportName: "All_Work_Tickets",
@@ -155,8 +169,10 @@ function Main(props) {
           pageSize: 200,
           criteria: `(SKU=="${assemblySKU}" && Status=="Open"${
             workTicketID ? " && ID!=" + workTicketID : ""
-          }) || ${compositeItem?.composite_item?.mapped_items
-            .map((q) => `(SKU=="${q.sku}" && Status=="Open"${workTicketID ? " && ID!=" + workTicketID : ""})`)
+          }) || ${relatedAssemblies
+            .map(
+              (q) => `(SKU=="${q.Mapped_Item_SKU}" && Status=="Open"${workTicketID ? " && ID!=" + workTicketID : ""})`
+            )
             .join(" || ")}`,
         })
   );
