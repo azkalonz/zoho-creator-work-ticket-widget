@@ -152,27 +152,35 @@ function Main(props) {
       : creatorConfig({
           reportName: "All_Composite_Items",
           page: 1,
-          pageSize: 200,
+          pageSize: 189,
           criteria: `${compositeItem?.composite_item?.mapped_items
             .map((q) => `Mapped_Item_ID=="${q.item_id}"`)
             .join(" || ")}`,
         })
   );
-  console.log("tt", relatedAssemblies);
+
+  const { data: workTicketsComponentsUsedIn } = useGetAllRecords(
+    !relatedAssemblies
+      ? null
+      : creatorConfig({
+          reportName: "All_Work_Tickets",
+          page: 1,
+          pageSize: 199,
+          criteria: `${Array.from(new Set(relatedAssemblies.map((q) => q.SKU)))
+            .map((q) => `(SKU=="${q}" && Status=="Open"${workTicketID ? " && ID!=" + workTicketID : ""})`)
+            .join(" || ")}`,
+        })
+  );
 
   const { data: relatedWorkTickets, isLoading: isRelatedWorkTicketsLoading } = useGetAllRecords(
-    !assemblySKU || !compositeItem?.composite_item?.mapped_items || !relatedAssemblies
+    !workTicketsComponentsUsedIn
       ? null
       : creatorConfig({
           reportName: "All_Work_Tickets",
           page: 1,
           pageSize: 200,
-          criteria: `(SKU=="${assemblySKU}" && Status=="Open"${
-            workTicketID ? " && ID!=" + workTicketID : ""
-          }) || ${relatedAssemblies
-            .map(
-              (q) => `(SKU=="${q.Mapped_Item_SKU}" && Status=="Open"${workTicketID ? " && ID!=" + workTicketID : ""})`
-            )
+          criteria: `${compositeItem?.composite_item?.mapped_items
+            .map((q) => `(SKU=="${q.sku}" && Status=="Open")`)
             .join(" || ")}`,
         })
   );
@@ -545,7 +553,6 @@ function Main(props) {
   const getTotalUnitCost = (purchaseRate, quantity, liveUpdate = false) => {
     return formatCurrency(purchaseRate * quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket?.Quantity || 1));
   };
-
   const getSettings = () => (workTicketID ? "editing_work_ticket" : "creating_work_ticket");
 
   const getAvailableStock = (sku, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
@@ -554,6 +561,11 @@ function Main(props) {
         if (wt.SKU === sku) {
           initialAvailableStock += parseInt(wt.Quantity) * quantityNeeded;
         }
+      });
+    }
+    if (workTicketsComponentsUsedIn?.length) {
+      workTicketsComponentsUsedIn.forEach((wt) => {
+        initialAvailableStock -= parseInt(wt.Quantity) * quantityNeeded;
       });
     }
     if (!bundleId)
