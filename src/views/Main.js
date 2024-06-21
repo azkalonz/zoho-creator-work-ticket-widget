@@ -124,15 +124,15 @@ function Main(props) {
   const compositeItem = useGetCompositeItem(!isReady ? null : assemblyID);
 
   const relatedAssemblies = useGetAllRecords(
-    !assemblySKU || !compositeItem.data?.composite_item?.mapped_items
+    !assemblySKU || !compositeItem.data?.composite_item?.mapped_items || !assemblyID
       ? null
       : creatorConfig({
           reportName: "All_Composite_Items",
           page: 1,
           pageSize: 200,
-          criteria: `${compositeItem.data?.composite_item?.mapped_items
+          criteria: `(Mapped_Item_ID=="${assemblyID}") || ${compositeItem.data?.composite_item?.mapped_items
             ?.filter((q) => !!q.inventory_account_id)
-            .map((q) => `Mapped_Item_ID=="${q.item_id}"`)
+            .map((q) => `(Mapped_Item_ID=="${q.item_id}")`)
             .join(" || ")}`,
         })
   );
@@ -145,7 +145,7 @@ function Main(props) {
           page: 1,
           pageSize: 200,
           criteria: `${Array.from(new Set(relatedAssemblies.data.map((q) => q.SKU)))
-            .map((q) => `(SKU=="${q}" && Status=="Open" ${workTicketID ? `&& ID!=${workTicketID}` : ""})`)
+            .map((q) => `(SKU=="${q}" && Status=="Open")`)
             .join(" || ")}`,
         })
   );
@@ -157,7 +157,7 @@ function Main(props) {
           reportName: "All_Work_Tickets",
           page: 1,
           pageSize: 200,
-          criteria: `${compositeItem.data?.composite_item?.mapped_items
+          criteria: `(SKU=="${assemblySKU}" && Status=="Open") || ${compositeItem.data?.composite_item?.mapped_items
             ?.filter((q) => !!q.inventory_account_id)
             .map((q) => `(SKU=="${q.sku}" && Status=="Open")`)
             .join(" || ")}`,
@@ -552,7 +552,7 @@ function Main(props) {
       workTicketsComponentsUsedIn.data.forEach((wt) => {
         let wtd = wt.Included_Components.split(",").map((q) => ({ id: q.split(":")[0], quantity: q.split(":")[1] }));
         let wtt = wtd.find((q) => q.id === item_id);
-        if (wtt) {
+        if (wtt && wt.ID !== workTicketID) {
           initialAvailableStock -= parseFloat(wt.Quantity) * wtt.quantity;
         }
       });
@@ -793,7 +793,7 @@ function Main(props) {
                 new Array(5)
                   .fill(0)
                   .map((a, i) => <Skeleton width={100 / 6 + "%"} height={80} animation="wave" key={i} />)}
-              {!assemblyItem.isValidating && (
+              {!assemblyItem.isValidating && workTicketItem && (
                 <>
                   <ListItemText
                     primary={workTicketItem.sku}
@@ -814,14 +814,36 @@ function Main(props) {
                     secondary="Qty On Hand"
                   />
                   <ListItemText
-                    primary={
+                    primary={parseFloat(
                       workTicketItem.available_stock -
-                      getCommittedStock() +
-                      relatedWorkTickets.data?.reduce(
-                        (acc, obj) => (obj.SKU === workTicketItem.sku ? acc + obj.Quantity : acc),
-                        0
-                      )
-                    }
+                        getCommittedStock() +
+                        relatedWorkTickets.data?.reduce(
+                          (acc, obj) => (obj.SKU === workTicketItem.sku ? acc + parseFloat(obj.Quantity) : acc),
+                          0
+                        ) -
+                        (() => {
+                          let wt = workTicketsComponentsUsedIn.data?.filter((q) => q.ID !== workTicketID);
+                          let t = wt
+                            .map((q) => ({
+                              ...q,
+                              Included_Components: q.Included_Components.split(","),
+                            }))
+                            .map(({ Included_Components, Quantity }) => {
+                              let i = Included_Components.map((q) => ({
+                                id: q.split(":")[0],
+                                qty: q.split(":")[1],
+                              }));
+                              let ii = i.find((q) => q.id === workTicketItem.item_id);
+                              if (ii) {
+                                return parseFloat(ii.qty) * parseFloat(Quantity);
+                              }
+                            });
+                          if (t.filter((q) => !!q)?.length) {
+                            return t.reduce((acc, p) => acc + p, 0);
+                          }
+                          return 0;
+                        })()
+                    ).toFixed(settings.quantity_precision)}
                     secondary="Qty Available"
                   />
                   <ListItemText primary={getCommittedStock()} secondary="Committed" />
