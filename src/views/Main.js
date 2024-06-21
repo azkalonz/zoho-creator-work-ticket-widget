@@ -199,10 +199,10 @@ function Main(props) {
   }, [refresh.data]);
 
   useEffect(() => {
-    if (addWorkTicket.data?.data?.ID) {
+    if (addWorkTicket.data?.ID) {
       const param = {
         action: "open",
-        url: `#Page:Create_Work_Ticket?work_ticket_id=${addWorkTicket.data.data.ID}`,
+        url: `#Page:Create_Work_Ticket?work_ticket_id=${addWorkTicket.data.ID}`,
         window: "same",
       };
       /*global ZOHO */
