@@ -716,7 +716,9 @@ function Main(props) {
     currentWorkTicket.isLoading ||
     relatedWorkTickets.isLoading ||
     _zohoSettings.isLoading ||
-    zohoSettings.isLoading
+    zohoSettings.isLoading ||
+    relatedAssemblies.isLoading ||
+    workTicketsComponentsUsedIn.isLoading
   ) {
     return <LinearProgress />;
   }
