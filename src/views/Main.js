@@ -775,10 +775,10 @@ function Main(props) {
     await addedComponents.mutate(addedComponentsUpdate);
     await usedComponents.mutate(usedComponentsUpdate);
     await currentWorkTicket.mutate(currentWorkTicketUpdate);
-    await compositeItem.mutate();
-    await assemblyItem.mutate();
     setToastSuccess(true);
     setOpen(false);
+    await compositeItem.mutate();
+    await assemblyItem.mutate();
   };
 
   const handleSetInitialValues = (data) => {
@@ -802,7 +802,8 @@ function Main(props) {
     addedComponents.isValidating ||
     usedComponents.isValidating ||
     compositeItem.isValidating ||
-    assemblyItem.isValidating;
+    assemblyItem.isValidating ||
+    !workTicketItem;
 
   if (authenticate.isMutating) {
     return (
