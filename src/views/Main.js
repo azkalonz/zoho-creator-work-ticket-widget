@@ -37,17 +37,19 @@ import { useReactToPrint } from "react-to-print";
 import PDFTemplate from "../components/PDFTemplate.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
-import fetcher, { zohoAxiosInstance } from "../services/fetcher.js";
+import fetcher, { creatorMultiApiFetcher, zohoAxiosInstance } from "../services/fetcher.js";
 import {
   useAddRecordMutation,
   useAuthenticateMutation,
   useCreateBundleMutation,
   useDeleteBundleMutation,
+  useDeleteRecordMutation,
   useRefreshMutation,
   useUpdateRecordMutation,
 } from "../services/mutation";
 import {
   useGetAllRecords,
+  useGetAllRecordsMulti,
   useGetCompositeItem,
   useGetItemSalesOrders,
   useGetRecordById,
@@ -84,6 +86,8 @@ function Main(props) {
 
   const { setDialog, setOpen } = useConfirmDialog();
   const addWorkTicket = useAddRecordMutation();
+  const deleteWorkTicketDetails = useDeleteRecordMutation();
+  const addWorkTicketDetails = useAddRecordMutation();
   const updateWorkTicket = useUpdateRecordMutation();
 
   const updateSettings = useUpdateRecordMutation();
@@ -123,46 +127,50 @@ function Main(props) {
 
   const compositeItem = useGetCompositeItem(!isReady ? null : assemblyID);
 
-  const relatedAssemblies = useGetAllRecords(
-    !assemblySKU || !compositeItem.data?.composite_item?.mapped_items || !assemblyID
+  const usedComponents = useGetAllRecordsMulti(
+    !compositeItem.data?.composite_item?.mapped_items
       ? null
-      : creatorConfig({
-          reportName: "All_Composite_Items",
-          page: 1,
-          pageSize: 200,
-          criteria: `(Mapped_Item_ID=="${assemblyID}") || ${compositeItem.data?.composite_item?.mapped_items
-            ?.filter((q) => !!q.inventory_account_id)
-            .map((q) => `(Mapped_Item_ID=="${q.item_id}")`)
-            .join(" || ")}`,
-        })
+      : compositeItem.data?.composite_item?.mapped_items
+          ?.map((q) =>
+            creatorConfig({
+              reportName: "All_Work_Ticket_Details",
+              page: 1,
+              pageSize: 200,
+              criteria: `(Component_ID=="${q.item_id}" && Status=="Open") `,
+            })
+          )
+          .concat([
+            creatorConfig({
+              reportName: "All_Work_Ticket_Details",
+              page: 1,
+              pageSize: 200,
+              criteria: `(Component_ID=="${assemblyID}" && Status=="Open") `,
+            }),
+          ])
   );
 
-  const workTicketsComponentsUsedIn = useGetAllRecords(
-    !relatedAssemblies.data
+  const addedComponents = useGetAllRecordsMulti(
+    !compositeItem.data?.composite_item?.mapped_items
       ? null
-      : creatorConfig({
-          reportName: "All_Work_Tickets",
-          page: 1,
-          pageSize: 200,
-          criteria: `${Array.from(new Set(relatedAssemblies.data.map((q) => q.SKU)))
-            .map((q) => `(SKU=="${q}" && Status=="Open")`)
-            .join(" || ")}`,
-        })
+      : compositeItem.data?.composite_item?.mapped_items
+          ?.map((q) =>
+            creatorConfig({
+              reportName: "All_Work_Ticket_Details",
+              page: 1,
+              pageSize: 200,
+              criteria: `(Assembly_ID=="${q.item_id}" && Status=="Open") `,
+            })
+          )
+          .concat([
+            creatorConfig({
+              reportName: "All_Work_Ticket_Details",
+              page: 1,
+              pageSize: 200,
+              criteria: `(Assembly_ID=="${assemblyID}" && Status=="Open") `,
+            }),
+          ])
   );
 
-  const relatedWorkTickets = useGetAllRecords(
-    !assemblySKU || !compositeItem.data?.composite_item?.mapped_items
-      ? null
-      : creatorConfig({
-          reportName: "All_Work_Tickets",
-          page: 1,
-          pageSize: 200,
-          criteria: `(SKU=="${assemblySKU}" && Status=="Open") || ${compositeItem.data?.composite_item?.mapped_items
-            ?.filter((q) => !!q.inventory_account_id)
-            .map((q) => `(SKU=="${q.sku}" && Status=="Open")`)
-            .join(" || ")}`,
-        })
-  );
   const users = useGetAllRecords(
     !assemblySKU
       ? null
@@ -209,19 +217,6 @@ function Main(props) {
       ZOHO.CREATOR.UTIL.navigateParentURL(param);
     }
   }, [addWorkTicket]);
-
-  useEffect(() => {
-    if (!updateWorkTicket.isMutating) {
-      setOpen(false);
-      if (!updateWorkTicket.error) {
-        if (updateWorkTicket.data) {
-          setToastSuccess(true);
-        }
-      } else {
-        setError(JSON.stringify(updateWorkTicket.error));
-      }
-    }
-  }, [updateWorkTicket.data, updateWorkTicket.isMutating]);
 
   useEffect(() => {
     if (!currentWorkTicket.isLoading && currentWorkTicket.data?.ID) {
@@ -347,6 +342,33 @@ function Main(props) {
     setOpen(true);
     const callback = () => {
       if (typeof initialCallback === "function") initialCallback();
+      if (workTicketID) {
+        deleteWorkTicketDetails.trigger(
+          creatorConfig({
+            reportName: "All_Work_Ticket_Details",
+            criteria: `Work_Ticket_ID=="${workTicketID}"`,
+            callback: () => {
+              components.forEach((q) => {
+                addWorkTicketDetails.trigger(
+                  creatorConfig({
+                    formName: "Work_Ticket_Details",
+                    data: {
+                      data: {
+                        Work_Ticket_ID: workTicketID,
+                        Assembly_ID: assemblyID,
+                        Component_ID: q.item_id,
+                        Quantity_Required: q.quantity,
+                        Quantity_To_Build: qtyToBuild,
+                        Status: status,
+                      },
+                    },
+                  })
+                );
+              });
+            },
+          })
+        );
+      }
       handleRefreshData();
     };
 
@@ -437,6 +459,35 @@ function Main(props) {
         creatorConfig({
           formName: "Work_Ticket",
           data: formData,
+          callback: ({ data }) => {
+            if (data?.ID) {
+              deleteWorkTicketDetails.trigger(
+                creatorConfig({
+                  reportName: "All_Work_Ticket_Details",
+                  criteria: `Work_Ticket_ID=="${data?.ID}"`,
+                  callback: () => {
+                    components.forEach((q) => {
+                      addWorkTicketDetails.trigger(
+                        creatorConfig({
+                          formName: "Work_Ticket_Details",
+                          data: {
+                            data: {
+                              Work_Ticket_ID: data.ID,
+                              Assembly_ID: assemblyID,
+                              Component_ID: q.item_id,
+                              Quantity_Required: q.quantity,
+                              Quantity_To_Build: qtyToBuild,
+                              Status: "Open",
+                            },
+                          },
+                        })
+                      );
+                    });
+                  },
+                })
+              );
+            }
+          },
         })
       );
     }
@@ -454,6 +505,12 @@ function Main(props) {
             },
           },
           callback: () => {
+            deleteWorkTicketDetails.trigger(
+              creatorConfig({
+                reportName: "All_Work_Ticket_Details",
+                criteria: `Work_Ticket_ID=="${workTicketID}"`,
+              })
+            );
             deleteBundle.trigger({
               method: "POST",
               callback: (response) => {
@@ -541,20 +598,22 @@ function Main(props) {
 
   const getAvailableStock = (sku, item_id, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
     if (initialAvailableStock === "") return "";
-    if (relatedWorkTickets.data?.length) {
-      relatedWorkTickets.data.forEach((wt) => {
-        if (wt.SKU === sku) {
-          initialAvailableStock += parseFloat(wt.Quantity) * quantityNeeded;
-        }
+    if (addedComponents.data?.length) {
+      addedComponents.data.forEach((item) => {
+        item?.forEach((workTicket) => {
+          if (workTicket.Assembly_ID === item_id && workTicket.Work_Ticket_ID !== workTicketID) {
+            initialAvailableStock += parseFloat(workTicket.Quantity_To_Build);
+          }
+        });
       });
     }
-    if (workTicketsComponentsUsedIn.data?.length) {
-      workTicketsComponentsUsedIn.data.forEach((wt) => {
-        let wtd = wt.Included_Components.split(",").map((q) => ({ id: q.split(":")[0], quantity: q.split(":")[1] }));
-        let wtt = wtd.find((q) => q.id === item_id);
-        if (wtt && wt.ID !== workTicketID) {
-          initialAvailableStock -= parseFloat(wt.Quantity) * wtt.quantity;
-        }
+    if (usedComponents.data?.length) {
+      usedComponents.data.forEach((item) => {
+        item?.forEach((workTicket) => {
+          if (workTicket.Component_ID === item_id && workTicket.Work_Ticket_ID !== workTicketID) {
+            initialAvailableStock -= parseFloat(workTicket.Quantity_To_Build);
+          }
+        });
       });
     }
     if (!bundleId)
@@ -633,7 +692,7 @@ function Main(props) {
     });
     const data = {
       date: moment(ticketCompleted).format("YYYY-MM-DD"),
-      description: `${workTicketItem.SKU}      ${workTicketItem.description}`,
+      description: `${workTicketItem.assembly_sku}      ${workTicketItem.description}`,
       composite_item_id: assemblyID,
       composite_item_name: workTicketItem.name,
       composite_item_sku: assemblySKU,
@@ -666,17 +725,60 @@ function Main(props) {
   };
 
   const handleRefreshData = async () => {
-    currentWorkTicket.mutate({});
-    const updated = await fetcher(
+    const currentWorkTicketUpdate = await fetcher(
       "getRecordById",
       creatorConfig({
         reportName: "All_Work_Tickets",
         id: workTicketID,
       })
     );
-    currentWorkTicket.mutate(updated);
-    compositeItem.mutate();
-    assemblyItem.mutate();
+    const addedComponentsUpdate = await creatorMultiApiFetcher(
+      compositeItem.data?.composite_item?.mapped_items
+        ?.map((q) =>
+          creatorConfig({
+            reportName: "All_Work_Ticket_Details",
+            page: 1,
+            pageSize: 200,
+            criteria: `(Assembly_ID=="${q.item_id}" && Status=="Open") `,
+          })
+        )
+        .concat([
+          creatorConfig({
+            reportName: "All_Work_Ticket_Details",
+            page: 1,
+            pageSize: 200,
+            criteria: `(Assembly_ID=="${assemblyID}" && Status=="Open") `,
+          }),
+        ])
+        .map((q) => ({ ...q, method: "getAllRecords" }))
+    );
+    const usedComponentsUpdate = await creatorMultiApiFetcher(
+      compositeItem.data?.composite_item?.mapped_items
+        ?.map((q) =>
+          creatorConfig({
+            reportName: "All_Work_Ticket_Details",
+            page: 1,
+            pageSize: 200,
+            criteria: `(Component_ID=="${q.item_id}" && Status=="Open") `,
+          })
+        )
+        .concat([
+          creatorConfig({
+            reportName: "All_Work_Ticket_Details",
+            page: 1,
+            pageSize: 200,
+            criteria: `(Component_ID=="${assemblyID}" && Status=="Open") `,
+          }),
+        ])
+        .map((q) => ({ ...q, method: "getAllRecords" }))
+    );
+    await addedComponents.mutate(addedComponentsUpdate);
+    await usedComponents.mutate(usedComponentsUpdate);
+    await currentWorkTicket.mutate(currentWorkTicketUpdate);
+    await compositeItem.mutate();
+    await assemblyItem.mutate();
+    setToastSuccess(true);
+    setOpen(false);
   };
 
   const handleSetInitialValues = (data) => {
@@ -695,6 +797,12 @@ function Main(props) {
 
   const workTicketItem = assemblyItem.data?.items?.[0];
   const primaryWarehouse = compositeItem.data?.composite_item?.warehouses?.[0];
+  const isRefreshing =
+    currentWorkTicket.isValidating ||
+    addedComponents.isValidating ||
+    usedComponents.isValidating ||
+    compositeItem.isValidating ||
+    assemblyItem.isValidating;
 
   if (authenticate.isMutating) {
     return (
@@ -715,11 +823,10 @@ function Main(props) {
     lastWorkTicket.isLoading ||
     users.isLoading ||
     currentWorkTicket.isLoading ||
-    relatedWorkTickets.isLoading ||
     _zohoSettings.isLoading ||
     zohoSettings.isLoading ||
-    relatedAssemblies.isLoading ||
-    workTicketsComponentsUsedIn.isLoading
+    addedComponents.isLoading ||
+    usedComponents.isLoading
   ) {
     return <LinearProgress />;
   }
@@ -773,8 +880,11 @@ function Main(props) {
               disabled={!components || !currentWorkTicket.data || (status === "Completed" && !bundleId)}
               startIcon={<PrintOutlined />}
               onClick={() => {
-                handleSave(null, () => {
-                  handlePrint(null, () => componentToPrint.current);
+                handleSave(null, async () => {
+                  await handleRefreshData();
+                  setTimeout(() => {
+                    handlePrint(null, () => componentToPrint.current);
+                  }, 0);
                 });
               }}
             >
@@ -789,11 +899,11 @@ function Main(props) {
         <Grid container p={4}>
           <Grid item xs={8}>
             <List style={{ flexDirection: "row", display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {assemblyItem.isValidating &&
+              {isRefreshing &&
                 new Array(5)
                   .fill(0)
                   .map((a, i) => <Skeleton width={100 / 6 + "%"} height={80} animation="wave" key={i} />)}
-              {!assemblyItem.isValidating && workTicketItem && (
+              {!isRefreshing && (
                 <>
                   <ListItemText
                     primary={workTicketItem.sku}
@@ -817,33 +927,19 @@ function Main(props) {
                     primary={parseFloat(
                       workTicketItem.available_stock -
                         getCommittedStock() +
-                        relatedWorkTickets.data?.reduce(
-                          (acc, obj) => (obj.SKU === workTicketItem.sku ? acc + parseFloat(obj.Quantity) : acc),
-                          0
-                        ) -
-                        (() => {
-                          let wt = workTicketsComponentsUsedIn.data?.filter((q) => q.ID !== workTicketID);
-                          let t = wt
-                            .map((q) => ({
-                              ...q,
-                              Included_Components: q.Included_Components.split(","),
-                            }))
-                            .map(({ Included_Components, Quantity }) => {
-                              let i = Included_Components.map((q) => ({
-                                id: q.split(":")[0],
-                                qty: q.split(":")[1],
-                              }));
-                              let ii = i.find((q) => q.id === workTicketItem.item_id);
-                              if (ii) {
-                                return parseFloat(ii.qty) * parseFloat(Quantity);
-                              }
-                            });
-                          if (t.filter((q) => !!q)?.length) {
-                            return t.reduce((acc, p) => acc + p, 0);
-                          }
-                          return 0;
-                        })()
-                    ).toFixed(settings.quantity_precision)}
+                        addedComponents.data?.reduce((acc, wt) => {
+                          let tickets = wt?.filter((q) => q.Assembly_ID === assemblyID);
+                          let res = {};
+                          tickets?.forEach((q) => {
+                            res[q.Work_Ticket_ID] = q.Quantity_To_Build;
+                          });
+                          return acc + Object.keys(res).reduce((a, o) => a + parseFloat(res[o]), 0);
+                        }, 0) -
+                        usedComponents.data?.reduce((acc, wt) => {
+                          let tickets = wt?.filter((q) => q.Component_ID === assemblyID);
+                          return acc + tickets?.reduce((a, p) => a + parseFloat(p.Quantity_To_Build) || 0, 0);
+                        }, 0)
+                    )}
                     secondary="Qty Available"
                   />
                   <ListItemText primary={getCommittedStock()} secondary="Committed" />
@@ -1185,13 +1281,12 @@ function Main(props) {
                           {getRequiredQuantity(quantity, settings[getSettings()].live_update.required)}
                         </TableCell>
                         <TableCell>
-                          {compositeItem.isValidating && <Skeleton />}
-                          {!compositeItem.isValidating &&
-                            parseFloat(stock_on_hand).toFixed(settings.quantity_precision)}
+                          {isRefreshing && <Skeleton />}
+                          {!isRefreshing && parseFloat(stock_on_hand).toFixed(settings.quantity_precision)}
                         </TableCell>
                         <TableCell>
-                          {compositeItem.isValidating && <Skeleton />}
-                          {!compositeItem.isValidating &&
+                          {isRefreshing && <Skeleton />}
+                          {!isRefreshing &&
                             getAvailableStock(
                               sku,
                               item_id,

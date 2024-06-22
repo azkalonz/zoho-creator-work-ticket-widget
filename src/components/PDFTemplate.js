@@ -3,6 +3,7 @@ import React from "react";
 
 import "./pdfTemplate.scss";
 import moment from "moment";
+import { settings } from "../settings";
 
 function PDFTemplate(props) {
   const { componentRef, ...restProps } = props;
@@ -56,7 +57,7 @@ function PDFTemplate(props) {
             Qty to Build
           </Grid>
           <Grid item xs={12}>
-            {qtyToBuild}
+            {parseFloat(qtyToBuild).toFixed(settings.quantity_precision)}
           </Grid>
         </Grid>
         <Grid container xs={4}>
@@ -147,13 +148,13 @@ function PDFTemplate(props) {
               <Typography>{description}</Typography>
             </Grid>
             <Grid item xs={1}>
-              <Typography>{required}</Typography>
+              <Typography>{parseFloat(required).toFixed(settings.quantity_precision)}</Typography>
             </Grid>
             <Grid item xs={1}>
-              <Typography>{stock_on_hand}</Typography>
+              <Typography>{parseFloat(stock_on_hand).toFixed(settings.quantity_precision)}</Typography>
             </Grid>
             <Grid item xs={1}>
-              <Typography>{available}</Typography>
+              <Typography>{parseFloat(available).toFixed(settings.quantity_precision)}</Typography>
             </Grid>
             <Grid item xs={1}>
               <Typography></Typography>

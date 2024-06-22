@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import fetcher, { zohoApiFetcher, zohoMultiApiFetcher } from "./fetcher";
+import fetcher, { creatorMultiApiFetcher, zohoApiFetcher, zohoMultiApiFetcher } from "./fetcher";
 import creatorConfig from "../lib/creatorConfig";
 
 export function useGetAllRecords(config) {
@@ -54,5 +54,11 @@ export function useGetItemSalesOrders(id) {
           )
         ),
     zohoMultiApiFetcher
+  );
+}
+
+export function useGetAllRecordsMulti(configs) {
+  return useSWR(!configs ? null : configs.map((q) => ({ ...q, method: "getAllRecords" })), (configs) =>
+    creatorMultiApiFetcher(configs).then((q) => q.filter((q) => !!q))
   );
 }

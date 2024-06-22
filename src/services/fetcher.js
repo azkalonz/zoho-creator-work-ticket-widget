@@ -28,4 +28,8 @@ export function zohoMultiApiFetcher(urls, api = "ZOHO_INVENTORY") {
   return Promise.all(urls.map((url) => zohoApiFetcher(url, { api })));
 }
 
+export function creatorMultiApiFetcher(configs) {
+  return Promise.all(configs.map(({ method, ...config }) => fetcher(method, config).catch((q) => console.error(q))));
+}
+
 export default fetcher;
