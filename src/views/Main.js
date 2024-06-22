@@ -692,7 +692,7 @@ function Main(props) {
     });
     const data = {
       date: moment(ticketCompleted).format("YYYY-MM-DD"),
-      description: `${workTicketItem.assembly_sku}      ${workTicketItem.description}`,
+      description: `${assemblySKU}      ${workTicketItem.description}`,
       composite_item_id: assemblyID,
       composite_item_name: workTicketItem.name,
       composite_item_sku: assemblySKU,
