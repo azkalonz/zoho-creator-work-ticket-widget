@@ -1,4 +1,11 @@
-import { AddOutlined, DeleteOutline, Launch, LoginOutlined, PrintOutlined, SaveOutlined } from "@mui/icons-material";
+import {
+  AddOutlined,
+  DeleteOutline,
+  Launch,
+  LoginOutlined,
+  PrintOutlined,
+  SaveOutlined,
+} from "@mui/icons-material";
 import {
   Alert,
   AppBar,
@@ -37,7 +44,10 @@ import { useReactToPrint } from "react-to-print";
 import PDFTemplate from "../components/PDFTemplate.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
-import fetcher, { creatorMultiApiFetcher, zohoAxiosInstance } from "../services/fetcher.js";
+import fetcher, {
+  creatorMultiApiFetcher,
+  zohoAxiosInstance,
+} from "../services/fetcher.js";
 import {
   useAddRecordMutation,
   useAuthenticateMutation,
@@ -65,10 +75,15 @@ import {
 
 function Main(props) {
   /*global ZOHO*/
-  const { assembly_sku, assembly_id, work_ticket_id, code, state } = ZOHO.CREATOR.UTIL.getQueryParams();
+  const { assembly_sku, assembly_id, work_ticket_id, code, state } =
+    ZOHO.CREATOR.UTIL.getQueryParams();
   const [workTicketID, setWorkTicketID] = useState(work_ticket_id);
-  const [assemblySKU, setAssemblySKU] = useState(work_ticket_id ? null : assembly_sku);
-  const [assemblyID, setAssemblyID] = useState(work_ticket_id ? null : assembly_id);
+  const [assemblySKU, setAssemblySKU] = useState(
+    work_ticket_id ? null : assembly_sku
+  );
+  const [assemblyID, setAssemblyID] = useState(
+    work_ticket_id ? null : assembly_id
+  );
   const [workTicketNumber, setWorkTicketNumber] = useState(0);
   const [workTicketDate, setWorkTicketDate] = useState(moment(new Date()));
   const [status, setStatus] = useState("Open");
@@ -110,7 +125,9 @@ function Main(props) {
     !_zohoSettings.data?.length ? null : "All_Settings",
     _zohoSettings.data?.[0].ID
   );
-  const [isReady, setIsReady] = useState(!!zohoSettings.data?.api__access_token);
+  const [isReady, setIsReady] = useState(
+    !!zohoSettings.data?.api__access_token
+  );
 
   const currentWorkTicket = useGetRecordById("All_Work_Tickets", workTicketID);
   const lastWorkTicket = useGetAllRecords(
@@ -123,7 +140,9 @@ function Main(props) {
         })
   );
 
-  const committedSalesOrders = useGetItemSalesOrders(!isReady ? null : assemblyID);
+  const committedSalesOrders = useGetItemSalesOrders(
+    !isReady ? null : assemblyID
+  );
 
   const compositeItem = useGetCompositeItem(!isReady ? null : assemblyID);
 
@@ -202,7 +221,10 @@ function Main(props) {
 
   useEffect(() => {
     if (refresh.data?.access_token) {
-      handleAuth(refresh.data, encodeURI(JSON.stringify({ work_ticket_id, assembly_id, assembly_sku })));
+      handleAuth(
+        refresh.data,
+        encodeURI(JSON.stringify({ work_ticket_id, assembly_id, assembly_sku }))
+      );
     }
   }, [refresh.data]);
 
@@ -245,7 +267,8 @@ function Main(props) {
         }
       });
       if (settings.api.access_token) {
-        zohoAxiosInstance.defaults.headers.common.Authorization = settings.api.access_token;
+        zohoAxiosInstance.defaults.headers.common.Authorization =
+          settings.api.access_token;
         setIsReady(true);
       }
     }
@@ -253,7 +276,11 @@ function Main(props) {
 
   useEffect(() => {
     if (!currentWorkTicket.data && lastWorkTicket.data?.length) {
-      setWorkTicketNumber(lastWorkTicket.data?.length ? parseInt(lastWorkTicket.data[0].Work_Ticket_No) + 1 : 1);
+      setWorkTicketNumber(
+        lastWorkTicket.data?.length
+          ? parseInt(lastWorkTicket.data[0].Work_Ticket_No) + 1
+          : 1
+      );
     } else if (currentWorkTicket.data) {
       setWorkTicketNumber(currentWorkTicket.data.Work_Ticket_No);
     }
@@ -278,7 +305,11 @@ function Main(props) {
       let excluded = currentWorkTicket.data?.Excluded_Components || "";
       excluded = excluded.split(",");
 
-      setComponents(compositeItem.data?.composite_item?.mapped_items?.filter((q) => excluded.indexOf(q.item_id) < 0));
+      setComponents(
+        compositeItem.data?.composite_item?.mapped_items?.filter(
+          (q) => excluded.indexOf(q.item_id) < 0
+        )
+      );
       setExcludedComponents(excluded);
     }
   }, [compositeItem.data, currentWorkTicket.data, compositeItem.isLoading]);
@@ -384,18 +415,24 @@ function Main(props) {
         Status: status,
         Bundle_ID: forceBundleId || bundleId,
         Excluded_Components: excludedComponents.join(","),
-        Included_Components: components.map((q) => q.item_id + ":" + q.quantity).join(","),
+        Included_Components: components
+          .map((q) => q.item_id + ":" + q.quantity)
+          .join(","),
       },
     };
     if (!formData.data.Created_By) {
-      const user = users.data.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser);
+      const user = users?.data?.find(
+        (q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser
+      );
       formData.data.Created_By = user?.ID;
     }
     if (ticketStarted) {
-      formData.data.Ticket_Started = moment(ticketStarted).format("DD-MMM-YYYY");
+      formData.data.Ticket_Started =
+        moment(ticketStarted).format("DD-MMM-YYYY");
     }
     if (ticketCompleted) {
-      formData.data.Ticket_Completed = moment(ticketCompleted).format("DD-MMM-YYYY");
+      formData.data.Ticket_Completed =
+        moment(ticketCompleted).format("DD-MMM-YYYY");
     }
 
     if (currentWorkTicket.data?.ID) {
@@ -405,8 +442,8 @@ function Main(props) {
           open: true,
           content: (
             <Typography>
-              You are about to mark this work ticket as complete. Continue to create the bundle in Zoho and complete
-              this work ticket.
+              You are about to mark this work ticket as complete. Continue to
+              create the bundle in Zoho and complete this work ticket.
             </Typography>
           ),
           onClose: (value) => {
@@ -530,7 +567,11 @@ function Main(props) {
     setDialog({
       title: "Confirm",
       open: true,
-      content: <Typography>Are you sure you want to delete this work ticket?</Typography>,
+      content: (
+        <Typography>
+          Are you sure you want to delete this work ticket?
+        </Typography>
+      ),
       onClose: (value) => {
         if (value === true) {
           __handleDelete();
@@ -578,30 +619,48 @@ function Main(props) {
   };
 
   const getRequiredQuantity = (quantity, liveUpdate = true) =>
-    parseFloat(quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1)).toFixed(
-      parseInt(settings.quantity_precision)
-    );
+    parseFloat(
+      quantity *
+        (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1)
+    ).toFixed(parseInt(settings.quantity_precision));
 
   const getTotalCost = (liveUpdate = true) =>
     components?.reduce(
       (acc, obj) =>
-        acc + obj.purchase_rate * obj.quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1),
+        acc +
+        obj.purchase_rate *
+          obj.quantity *
+          (liveUpdate
+            ? getQtyToBuild()
+            : currentWorkTicket.data?.Quantity || 1),
       0
     ) || 0;
 
   const getTotalUnitCost = (purchaseRate, quantity, liveUpdate = false) => {
     return formatCurrency(
-      purchaseRate * quantity * (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1)
+      purchaseRate *
+        quantity *
+        (liveUpdate ? getQtyToBuild() : currentWorkTicket.data?.Quantity || 1)
     );
   };
-  const getSettings = () => (workTicketID ? "editing_work_ticket" : "creating_work_ticket");
+  const getSettings = () =>
+    workTicketID ? "editing_work_ticket" : "creating_work_ticket";
 
-  const getAvailableStock = (sku, item_id, quantityNeeded, initialAvailableStock, liveUpdate = true) => {
+  const getAvailableStock = (
+    sku,
+    item_id,
+    quantityNeeded,
+    initialAvailableStock,
+    liveUpdate = true
+  ) => {
     if (initialAvailableStock === "") return "";
     if (addedComponents.data?.length) {
       addedComponents.data.forEach((item) => {
         item?.forEach((workTicket) => {
-          if (workTicket.Assembly_ID === item_id && workTicket.Work_Ticket_ID !== workTicketID) {
+          if (
+            workTicket.Assembly_ID === item_id &&
+            workTicket.Work_Ticket_ID !== workTicketID
+          ) {
             initialAvailableStock += parseFloat(workTicket.Quantity_To_Build);
           }
         });
@@ -610,7 +669,10 @@ function Main(props) {
     if (usedComponents.data?.length) {
       usedComponents.data.forEach((item) => {
         item?.forEach((workTicket) => {
-          if (workTicket.Component_ID === item_id && workTicket.Work_Ticket_ID !== workTicketID) {
+          if (
+            workTicket.Component_ID === item_id &&
+            workTicket.Work_Ticket_ID !== workTicketID
+          ) {
             initialAvailableStock -= parseFloat(workTicket.Quantity_To_Build);
           }
         });
@@ -620,11 +682,17 @@ function Main(props) {
       initialAvailableStock =
         parseFloat(initialAvailableStock) -
         parseFloat(quantityNeeded) *
-          parseFloat(liveUpdate ? getQtyToBuild() : parseFloat(currentWorkTicket.data?.Quantity) || 0);
+          parseFloat(
+            liveUpdate
+              ? getQtyToBuild()
+              : parseFloat(currentWorkTicket.data?.Quantity) || 0
+          );
 
     if (isNaN(initialAvailableStock)) return "";
 
-    return parseFloat(initialAvailableStock).toFixed(settings.quantity_precision);
+    return parseFloat(initialAvailableStock).toFixed(
+      settings.quantity_precision
+    );
   };
 
   const getCommittedStock = () => {
@@ -643,7 +711,10 @@ function Main(props) {
     if (status === "Completed") return;
     const selectedIndex = selectedComponents.indexOf(id);
 
-    if (selectedIndex < 0 && selectedComponents.length + 1 === components.length) {
+    if (
+      selectedIndex < 0 &&
+      selectedComponents.length + 1 === components.length
+    ) {
       return;
     }
 
@@ -697,14 +768,22 @@ function Main(props) {
       composite_item_name: workTicketItem.name,
       composite_item_sku: assemblySKU,
       quantity_to_bundle: getQtyToBuild(),
-      line_items: components.map(({ item_id, name, description, quantity, inventory_account_id: account_id }) => ({
-        item_id,
-        name,
-        description,
-        quantity_consumed: quantity,
-        account_id,
-        warehouse_id: primaryWarehouse?.warehouse_id,
-      })),
+      line_items: components.map(
+        ({
+          item_id,
+          name,
+          description,
+          quantity,
+          inventory_account_id: account_id,
+        }) => ({
+          item_id,
+          name,
+          description,
+          quantity_consumed: quantity,
+          account_id,
+          warehouse_id: primaryWarehouse?.warehouse_id,
+        })
+      ),
       is_completed: true,
     };
     createBundle.trigger({
@@ -795,6 +874,9 @@ function Main(props) {
     setBundleId(data.Bundle_ID);
   };
 
+  const loggedInUser = users?.data?.find(
+    (q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser
+  );
   const workTicketItem = assemblyItem.data?.items?.[0];
   const primaryWarehouse = compositeItem.data?.composite_item?.warehouses?.[0];
   const isRefreshing =
@@ -815,7 +897,11 @@ function Main(props) {
   }
 
   if (!assemblySKU) {
-    return <Alert severity="info">Search an assembly item to create work ticket.</Alert>;
+    return (
+      <Alert severity="info">
+        Search an assembly item to create work ticket.
+      </Alert>
+    );
   }
 
   if (
@@ -834,22 +920,49 @@ function Main(props) {
 
   if (!settings.api.access_token) {
     return (
-      <Paper style={{ height: "100vh", display: "grid", placeItems: "center", width: "100vw" }}>
-        <Button
-          variant="contained"
-          onClick={() => {
-            const param = {
-              action: "open",
-              url: getAuthenticationLink(encodeURI(JSON.stringify({ assembly_id, assembly_sku, work_ticket_id }))),
-              window: "same",
-            };
-            /*global ZOHO */
-            ZOHO.CREATOR.UTIL.navigateParentURL(param);
-          }}
-          startIcon={<LoginOutlined />}
-        >
-          Authenticate
-        </Button>
+      <Paper
+        style={{
+          height: "100vh",
+          display: "grid",
+          placeItems: "center",
+          width: "100vw",
+        }}
+      >
+        {loggedInUser?.Role !== "ADMIN" &&
+          loggedInUser?.Role !== "SUPERADMIN" && (
+            <Alert severity="info">
+              <Typography>
+                Please contact your admin to enable the Zoho Inventory
+                integration.
+              </Typography>
+            </Alert>
+          )}
+        {(loggedInUser?.Role === "ADMIN" ||
+          loggedInUser?.Role === "SUPERADMIN") && (
+          <Button
+            variant="contained"
+            onClick={() => {
+              const param = {
+                action: "open",
+                url: getAuthenticationLink(
+                  encodeURI(
+                    JSON.stringify({
+                      assembly_id,
+                      assembly_sku,
+                      work_ticket_id,
+                    })
+                  )
+                ),
+                window: "same",
+              };
+              /*global ZOHO */
+              ZOHO.CREATOR.UTIL.navigateParentURL(param);
+            }}
+            startIcon={<LoginOutlined />}
+          >
+            Connect to Zoho Inventory
+          </Button>
+        )}
       </Paper>
     );
   }
@@ -871,14 +984,22 @@ function Main(props) {
       <Paper>
         <AppBar position="sticky">
           <ButtonGroup variant="text" color="white">
-            <Button startIcon={<DeleteOutline />} onClick={handleDelete} disabled={!workTicketID}>
+            <Button
+              startIcon={<DeleteOutline />}
+              onClick={handleDelete}
+              disabled={!workTicketID}
+            >
               Delete
             </Button>
             <Button startIcon={<AddOutlined />} onClick={handleNew}>
               New
             </Button>
             <Button
-              disabled={!components || !currentWorkTicket.data || (status === "Completed" && !bundleId)}
+              disabled={
+                !components ||
+                !currentWorkTicket.data ||
+                (status === "Completed" && !bundleId)
+              }
               startIcon={<PrintOutlined />}
               onClick={() => {
                 handleSave(null, async () => {
@@ -899,11 +1020,25 @@ function Main(props) {
         {!workTicketItem && <LinearProgress />}
         <Grid container p={4}>
           <Grid item xs={8}>
-            <List style={{ flexDirection: "row", display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <List
+              style={{
+                flexDirection: "row",
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+              }}
+            >
               {isRefreshing &&
                 new Array(5)
                   .fill(0)
-                  .map((a, i) => <Skeleton width={100 / 6 + "%"} height={80} animation="wave" key={i} />)}
+                  .map((a, i) => (
+                    <Skeleton
+                      width={100 / 6 + "%"}
+                      height={80}
+                      animation="wave"
+                      key={i}
+                    />
+                  ))}
               {!isRefreshing && (
                 <>
                   <ListItemText
@@ -913,7 +1048,10 @@ function Main(props) {
                       ? {
                           primaryTypographyProps: {
                             component: Link,
-                            href: getZohoInventoryItemLink(workTicketItem.item_id, workTicketItem.sku),
+                            href: getZohoInventoryItemLink(
+                              workTicketItem.item_id,
+                              workTicketItem.sku
+                            ),
                             target: "_blank",
                           },
                         }
@@ -921,7 +1059,9 @@ function Main(props) {
                   />
 
                   <ListItemText
-                    primary={parseFloat(workTicketItem.stock_on_hand).toFixed(settings.quantity_precision)}
+                    primary={parseFloat(workTicketItem.stock_on_hand).toFixed(
+                      settings.quantity_precision
+                    )}
                     secondary="Qty On Hand"
                   />
                   <ListItemText
@@ -929,28 +1069,67 @@ function Main(props) {
                       workTicketItem.available_stock -
                         getCommittedStock() +
                         addedComponents.data?.reduce((acc, wt) => {
-                          let tickets = wt?.filter((q) => q.Assembly_ID === assemblyID);
+                          let tickets = wt?.filter(
+                            (q) => q.Assembly_ID === assemblyID
+                          );
                           let res = {};
                           tickets?.forEach((q) => {
                             res[q.Work_Ticket_ID] = q.Quantity_To_Build;
                           });
-                          return acc + Object.keys(res).reduce((a, o) => a + parseFloat(res[o]), 0);
+                          return (
+                            acc +
+                            Object.keys(res).reduce(
+                              (a, o) => a + parseFloat(res[o]),
+                              0
+                            )
+                          );
                         }, 0) -
                         usedComponents.data?.reduce((acc, wt) => {
-                          let tickets = wt?.filter((q) => q.Component_ID === assemblyID);
-                          return acc + tickets?.reduce((a, p) => a + parseFloat(p.Quantity_To_Build) || 0, 0);
+                          let tickets = wt?.filter(
+                            (q) => q.Component_ID === assemblyID
+                          );
+                          return (
+                            acc +
+                            tickets?.reduce(
+                              (a, p) =>
+                                a + parseFloat(p.Quantity_To_Build) || 0,
+                              0
+                            )
+                          );
                         }, 0)
                     )}
                     secondary="Qty Available"
                   />
-                  <ListItemText primary={getCommittedStock()} secondary="Committed" />
-                  <ListItemText primary={workTicketItem.reorder_level || "N/A"} secondary="Minimum Stock" />
-                  <ListItemText primary={workTicketItem.unit.toUpperCase()} secondary="UOM" />
-                  <ListItemText primary={formatCurrency(workTicketItem.purchase_rate)} secondary="Purchase Cost" />
+                  <ListItemText
+                    primary={getCommittedStock()}
+                    secondary="Committed"
+                  />
+                  <ListItemText
+                    primary={workTicketItem.reorder_level || "N/A"}
+                    secondary="Minimum Stock"
+                  />
+                  <ListItemText
+                    primary={workTicketItem.unit.toUpperCase()}
+                    secondary="UOM"
+                  />
+                  <ListItemText
+                    primary={formatCurrency(workTicketItem.purchase_rate)}
+                    secondary="Purchase Cost"
+                  />
                   <ListItemText
                     primary={
-                      <Typography style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                        {formatCurrency(getTotalCost(settings[getSettings()].live_update.total_cost))}
+                      <Typography
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 3,
+                        }}
+                      >
+                        {formatCurrency(
+                          getTotalCost(
+                            settings[getSettings()].live_update.total_cost
+                          )
+                        )}
                       </Typography>
                     }
                     secondary="Total Cost"
@@ -967,17 +1146,23 @@ function Main(props) {
               }}
             >
               <Autocomplete
-                options={users.data}
+                options={users?.data}
                 getOptionLabel={(option) => option.Name.display_value}
                 sx={{ width: 300 }}
                 disableClearable
                 disabled={!!bundleId}
                 value={
                   createdBy
-                    ? users.data.find((q) => q.ID === createdBy)
-                    : users.data.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser)
+                    ? users?.data?.find((q) => q.ID === createdBy)
+                    : loggedInUser
                 }
-                renderInput={(params) => <TextField {...params} label="Created By" variant="outlined" />}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Created By"
+                    variant="outlined"
+                  />
+                )}
                 renderOption={(props, option) => (
                   <Box {...props} key={option.ID}>
                     <Avatar sx={{ width: 30, height: 30, fontSize: "small" }}>
@@ -1028,7 +1213,13 @@ function Main(props) {
               </Select>
             </Toolbar>
           </Grid>
-          <Grid item xs={4} display="flex" flexDirection="column" alignItems="end">
+          <Grid
+            item
+            xs={4}
+            display="flex"
+            flexDirection="column"
+            alignItems="end"
+          >
             <InputLabel shrink={false} htmlFor="work-ticket-no">
               <Typography>Work Ticket No.</Typography>
             </InputLabel>
@@ -1061,7 +1252,9 @@ function Main(props) {
               id="qty-to-build"
               variant="outlined"
               type="number"
-              defaultValue={parseFloat(qtyToBuild).toFixed(settings.quantity_precision)}
+              defaultValue={parseFloat(qtyToBuild).toFixed(
+                settings.quantity_precision
+              )}
               disabled={status === "Completed"}
               onChange={(e) => {
                 if (e.target.value >= 999999) {
@@ -1088,7 +1281,11 @@ function Main(props) {
                   <Typography>
                     Bundle ID
                     <Link
-                      href={getZohoInventoryBundleLink(assemblyID, currentWorkTicket.data?.Bundle_ID, assemblySKU)}
+                      href={getZohoInventoryBundleLink(
+                        assemblyID,
+                        currentWorkTicket.data?.Bundle_ID,
+                        assemblySKU
+                      )}
                       target="_blank"
                     >
                       <Launch style={{ transform: "scale(0.7)" }} />
@@ -1113,7 +1310,8 @@ function Main(props) {
                         title: "Confirm Bundle ID",
                         content: (
                           <Typography>
-                            Changing the Bundle ID will unbind the work ticket to the created bundle in Zoho.
+                            Changing the Bundle ID will unbind the work ticket
+                            to the created bundle in Zoho.
                           </Typography>
                         ),
                         onClose: (value) => {
@@ -1153,7 +1351,8 @@ function Main(props) {
             )}
           </Grid>
           <Grid item xs={12} mt={3}>
-            {components?.length !== compositeItem.data?.composite_item?.mapped_items?.length && (
+            {components?.length !==
+              compositeItem.data?.composite_item?.mapped_items?.length && (
               <Alert severity="info">
                 {!!bundleId
                   ? "One or more components were not included in the bundle."
@@ -1173,20 +1372,35 @@ function Main(props) {
                         ...currentWorkTicket.data,
                         Ticket_Completed: ticketCompleted,
                         Ticket_Started: ticketStarted,
-                        Created_By: users.data.find((q) => q.ID === createdBy),
+                        Created_By: users?.data?.find(
+                          (q) => q.ID === createdBy
+                        ),
                         Date_field: workTicketDate,
                         Status: status,
                       },
                       ...workTicketItem,
                     },
                     components: components.map((d) => {
-                      const { actual_available_stock, quantity, purchase_rate, sku, item_id } = d;
+                      const {
+                        actual_available_stock,
+                        quantity,
+                        purchase_rate,
+                        sku,
+                        item_id,
+                      } = d;
                       return {
                         ...d,
                         unitCost: formatCurrency(purchase_rate),
-                        totalUnitCost: formatCurrency(purchase_rate * quantity * getQtyToBuild()),
+                        totalUnitCost: formatCurrency(
+                          purchase_rate * quantity * getQtyToBuild()
+                        ),
                         required: quantity * getQtyToBuild(),
-                        available: getAvailableStock(sku, item_id, quantity, actual_available_stock),
+                        available: getAvailableStock(
+                          sku,
+                          item_id,
+                          quantity,
+                          actual_available_stock
+                        ),
                       };
                     }),
                     qtyToBuild: getQtyToBuild(),
@@ -1198,13 +1412,20 @@ function Main(props) {
               <TableHead>
                 <TableRow>
                   <TableCell padding="checkbox">
-                    <Tooltip title="Select at least (1) component." placement="bottom">
+                    <Tooltip
+                      title="Select at least (1) component."
+                      placement="bottom"
+                    >
                       <Checkbox
                         disabled={status === "Completed"}
                         indeterminate={
-                          selectedComponents.length > 0 && selectedComponents.length < components.length - 1
+                          selectedComponents.length > 0 &&
+                          selectedComponents.length < components.length - 1
                         }
-                        checked={selectedComponents.length > 0 && selectedComponents.length === components.length - 1}
+                        checked={
+                          selectedComponents.length > 0 &&
+                          selectedComponents.length === components.length - 1
+                        }
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedComponents(
@@ -1234,7 +1455,10 @@ function Main(props) {
                   {selectedComponents.length > 0 && (
                     <>
                       <TableCell colSpan={7}>
-                        <Button startIcon={<DeleteOutline />} onClick={handleRemoveComponents}>
+                        <Button
+                          startIcon={<DeleteOutline />}
+                          onClick={handleRemoveComponents}
+                        >
                           Remove
                         </Button>
                       </TableCell>
@@ -1246,7 +1470,15 @@ function Main(props) {
                 {components
                   ?.sort((a, b) => a.sku - b.sku)
                   .map((d) => {
-                    const { actual_available_stock, name, sku, quantity, stock_on_hand, item_id, purchase_rate } = d;
+                    const {
+                      actual_available_stock,
+                      name,
+                      sku,
+                      quantity,
+                      stock_on_hand,
+                      item_id,
+                      purchase_rate,
+                    } = d;
                     const selected = isSelected(item_id);
 
                     return (
@@ -1259,13 +1491,26 @@ function Main(props) {
                         selected={selected}
                       >
                         <TableCell padding="checkbox">
-                          <Checkbox checked={selected} disabled={status === "Completed"} />
+                          <Checkbox
+                            checked={selected}
+                            disabled={status === "Completed"}
+                          />
                         </TableCell>
                         <TableCell>
                           {sku}
                           {settings.items.show_link && (
-                            <Link href={getZohoInventoryItemLink(item_id, sku, false)} target="_blank">
-                              <Launch fontSize="small" style={{ transform: "scale(0.7)" }} />
+                            <Link
+                              href={getZohoInventoryItemLink(
+                                item_id,
+                                sku,
+                                false
+                              )}
+                              target="_blank"
+                            >
+                              <Launch
+                                fontSize="small"
+                                style={{ transform: "scale(0.7)" }}
+                              />
                             </Link>
                           )}
                         </TableCell>
@@ -1279,11 +1524,17 @@ function Main(props) {
                           )}
                         </TableCell>
                         <TableCell>
-                          {getRequiredQuantity(quantity, settings[getSettings()].live_update.required)}
+                          {getRequiredQuantity(
+                            quantity,
+                            settings[getSettings()].live_update.required
+                          )}
                         </TableCell>
                         <TableCell>
                           {isRefreshing && <Skeleton />}
-                          {!isRefreshing && parseFloat(stock_on_hand).toFixed(settings.quantity_precision)}
+                          {!isRefreshing &&
+                            parseFloat(stock_on_hand).toFixed(
+                              settings.quantity_precision
+                            )}
                         </TableCell>
                         <TableCell>
                           {isRefreshing && <Skeleton />}
