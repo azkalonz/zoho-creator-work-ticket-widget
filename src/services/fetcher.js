@@ -2,7 +2,8 @@ import axios from "axios";
 import { settings } from "../settings";
 
 /*global ZOHO*/
-const fetcher = (method, config) => ZOHO.CREATOR.API[method](config).then((res) => res.data || res.result);
+const fetcher = (method, config) =>
+  ZOHO.CREATOR.API[method](config).then((res) => res.data || res.result);
 
 export const zohoAxiosInstance = axios.create({
   baseURL: "https://ksportusa.com/zoho/zohoapi.php",
@@ -15,9 +16,12 @@ export const zohoApiFetcher = (url, args = {}) => {
     case "ZOHO_INVENTORY":
       url = "?url=https://www.zohoapis.com/inventory/v1/" + url;
       if (url.indexOf("organization_id") < 0) {
-        url += url.indexOf("?") >= 0 ? `&organization_id=${settings.org_id}` : `?organization_id=${settings.org_id}`;
+        url +=
+          url.indexOf("?") >= 0
+            ? `&organization_id=${settings.org_id}`
+            : `?organization_id=${settings.org_id}`;
       }
-      url = encodeURI(url);
+      url = encodeURI(url.replaceAll("&", "%26"));
       break;
   }
   args.url = url;
@@ -29,7 +33,11 @@ export function zohoMultiApiFetcher(urls, api = "ZOHO_INVENTORY") {
 }
 
 export function creatorMultiApiFetcher(configs) {
-  return Promise.all(configs.map(({ method, ...config }) => fetcher(method, config).catch((q) => console.error(q))));
+  return Promise.all(
+    configs.map(({ method, ...config }) =>
+      fetcher(method, config).catch((q) => console.error(q))
+    )
+  );
 }
 
 export default fetcher;
