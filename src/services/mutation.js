@@ -15,26 +15,17 @@ export function useDeleteRecordMutation() {
 }
 
 export function useCreateBundleMutation() {
-  return useSWRMutation(
-    `bundles?organization_id=${settings.org_id}&method=POST`,
-    zohoInventoryApi
-  );
+  return useSWRMutation(`bundles?organization_id=${settings.org_id}&method=POST`, zohoInventoryApi);
 }
 
 export function useAuthenticateMutation(code) {
   return useSWRMutation(`?code=${code}`, zohoApi);
 }
 
-export function useRefreshMutation(refreshToken) {
-  return useSWRMutation(
-    `?refresh_token=${refreshToken || settings.api.refresh_token}`,
-    zohoApi
-  );
+export function useRefreshMutation() {
+  return useSWRMutation(`?refresh_token=${settings.api.refresh_token}`, zohoApi);
 }
 
 export function useDeleteBundleMutation(id) {
-  return useSWRMutation(
-    `bundles/${id}?organization_id=${settings.org_id}&method=DELETE`,
-    zohoInventoryApi
-  );
+  return useSWRMutation(`bundles/${id}?organization_id=${settings.org_id}&method=DELETE`, zohoInventoryApi);
 }
