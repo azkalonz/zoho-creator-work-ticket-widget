@@ -160,7 +160,7 @@ function useAuth({ isLoading = false } = {}) {
       );
     }
 
-    if (!settings.api.access_token) {
+    if (!settings.api.access_token && loggedInUser) {
       return (
         <Paper
           style={{
