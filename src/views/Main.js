@@ -258,13 +258,15 @@ function Main(props) {
         if (s[key] == "true" || s[key] == "false") {
           s[key] = eval(s[key]);
         }
-        if (path.length > 2) {
-          settings[option][settingKey][settingKey2] = s[key];
-        } else if (path.length > 1) {
-          settings[option][settingKey] = s[key];
-        } else {
-          settings[option] = s[key];
-        }
+        try {
+          if (path.length > 2) {
+            settings[option][settingKey][settingKey2] = s[key];
+          } else if (path.length > 1) {
+            settings[option][settingKey] = s[key];
+          } else {
+            settings[option] = s[key];
+          }
+        } catch (e) {}
       });
       if (settings.api.access_token) {
         zohoAxiosInstance.defaults.headers.common.Authorization =
