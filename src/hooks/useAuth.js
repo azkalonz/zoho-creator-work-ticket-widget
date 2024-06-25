@@ -37,7 +37,7 @@ function useAuth({ isLoading = false } = {}) {
   );
 
   const _zohoSettings = useGetAllRecords(
-    !users?.data
+    !users.data?.length
       ? null
       : creatorConfig({
           reportName: "All_Settings",
