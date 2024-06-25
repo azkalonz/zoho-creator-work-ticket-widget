@@ -2,7 +2,6 @@ import {
   AddOutlined,
   DeleteOutline,
   Launch,
-  LoginOutlined,
   PrintOutlined,
   SaveOutlined,
 } from "@mui/icons-material";
@@ -15,7 +14,6 @@ import {
   Button,
   ButtonGroup,
   Checkbox,
-  CircularProgress,
   Grid,
   InputLabel,
   LinearProgress,
@@ -42,15 +40,12 @@ import moment from "moment";
 import React, { useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import PDFTemplate from "../components/PDFTemplate.js";
+import useAuth from "../hooks/useAuth.js";
 import useConfirmDialog from "../hooks/useConfirmDialog";
 import creatorConfig from "../lib/creatorConfig";
-import fetcher, {
-  creatorMultiApiFetcher,
-  zohoAxiosInstance,
-} from "../services/fetcher.js";
+import fetcher, { creatorMultiApiFetcher } from "../services/fetcher.js";
 import {
   useAddRecordMutation,
-  useAuthenticateMutation,
   useCreateBundleMutation,
   useDeleteBundleMutation,
   useDeleteRecordMutation,
@@ -68,7 +63,6 @@ import {
 import { settings } from "../settings.js";
 import {
   formatCurrency,
-  getAuthenticationLink,
   getZohoInventoryBundleLink,
   getZohoInventoryItemLink,
 } from "../utils.js";
@@ -104,31 +98,9 @@ function Main(props) {
   const deleteWorkTicketDetails = useDeleteRecordMutation();
   const addWorkTicketDetails = useAddRecordMutation();
   const updateWorkTicket = useUpdateRecordMutation();
-
-  const updateSettings = useUpdateRecordMutation();
-
   const createBundle = useCreateBundleMutation();
   const deleteBundle = useDeleteBundleMutation(bundleId);
-
-  const authenticate = useAuthenticateMutation(code);
   const refresh = useRefreshMutation();
-
-  const _zohoSettings = useGetAllRecords(
-    creatorConfig({
-      reportName: "All_Settings",
-      page: 1,
-      pageSize: 1,
-    })
-  );
-
-  const zohoSettings = useGetRecordById(
-    !_zohoSettings.data?.length ? null : "All_Settings",
-    _zohoSettings.data?.[0].ID
-  );
-  const [isReady, setIsReady] = useState(
-    !!zohoSettings.data?.api__access_token
-  );
-
   const currentWorkTicket = useGetRecordById("All_Work_Tickets", workTicketID);
   const lastWorkTicket = useGetAllRecords(
     !assemblySKU
@@ -140,11 +112,14 @@ function Main(props) {
         })
   );
 
+  const { isReady, users, getSuspenseComponent } = useAuth({
+    isLoading: lastWorkTicket.isLoading || currentWorkTicket.isLoading,
+  });
+  const assemblyItem = useSearchItem(!isReady ? null : assemblySKU);
+  const compositeItem = useGetCompositeItem(!isReady ? null : assemblyID);
   const committedSalesOrders = useGetItemSalesOrders(
     !isReady ? null : assemblyID
   );
-
-  const compositeItem = useGetCompositeItem(!isReady ? null : assemblyID);
 
   const usedComponents = useGetAllRecordsMulti(
     !compositeItem.data?.composite_item?.mapped_items
@@ -190,17 +165,6 @@ function Main(props) {
           ])
   );
 
-  const users = useGetAllRecords(
-    !assemblySKU
-      ? null
-      : creatorConfig({
-          reportName: "All_Users",
-          page: 1,
-          pageSize: 200,
-        })
-  );
-  const assemblyItem = useSearchItem(!isReady ? null : assemblySKU);
-
   useEffect(() => {
     if (!addWorkTicket.isMutating) {
       setOpen(false);
@@ -218,15 +182,6 @@ function Main(props) {
       setError(assemblyItem.data.message);
     }
   }, [assemblyItem.data]);
-
-  useEffect(() => {
-    if (refresh.data?.access_token) {
-      handleAuth(
-        refresh.data,
-        encodeURI(JSON.stringify({ work_ticket_id, assembly_id, assembly_sku }))
-      );
-    }
-  }, [refresh.data]);
 
   useEffect(() => {
     if (addWorkTicket.data?.data?.ID) {
@@ -247,36 +202,6 @@ function Main(props) {
   }, [currentWorkTicket.data, currentWorkTicket.isLoading]);
 
   useEffect(() => {
-    if (zohoSettings.data) {
-      let s = { ...zohoSettings.data };
-      delete s.ID;
-      Object.keys(s).map((key) => {
-        let path = key.split("__");
-        let option = path[0];
-        let settingKey = path[1];
-        let settingKey2 = path[2];
-        if (s[key] == "true" || s[key] == "false") {
-          s[key] = eval(s[key]);
-        }
-        try {
-          if (path.length > 2) {
-            settings[option][settingKey][settingKey2] = s[key];
-          } else if (path.length > 1) {
-            settings[option][settingKey] = s[key];
-          } else {
-            settings[option] = s[key];
-          }
-        } catch (e) {}
-      });
-      if (settings.api.access_token) {
-        zohoAxiosInstance.defaults.headers.common.Authorization =
-          settings.api.access_token;
-        setIsReady(true);
-      }
-    }
-  }, [zohoSettings.data]);
-
-  useEffect(() => {
     if (!currentWorkTicket.data && lastWorkTicket.data?.length) {
       setWorkTicketNumber(
         lastWorkTicket.data?.length
@@ -293,10 +218,8 @@ function Main(props) {
       setError(addWorkTicket.error.responseText);
     } else if (updateWorkTicket.error) {
       setError(updateWorkTicket.error.responseText);
-    } else if (updateSettings.error) {
-      setError(updateSettings.error.responseText);
     }
-  }, [addWorkTicket.error, updateWorkTicket.error, updateSettings.error]);
+  }, [addWorkTicket.error, updateWorkTicket.error]);
 
   useEffect(() => {
     if (
@@ -315,52 +238,6 @@ function Main(props) {
       setExcludedComponents(excluded);
     }
   }, [compositeItem.data, currentWorkTicket.data, compositeItem.isLoading]);
-
-  useEffect(() => {
-    if (!!code && zohoSettings.data?.ID) {
-      authenticate.trigger();
-    }
-  }, [code, zohoSettings.data]);
-
-  useEffect(() => {
-    if (authenticate.data?.access_token) {
-      handleAuth(authenticate.data, state);
-    }
-  }, [authenticate.isMutating]);
-
-  const handleAuth = (data, state) => {
-    settings.api.access_token = data.access_token;
-    settings.api.refresh_token = data.refresh_token;
-    settings.api.scope = data.scope;
-    updateSettings.trigger(
-      creatorConfig({
-        reportName: "All_Settings",
-        id: zohoSettings.data.ID,
-        data: {
-          data: {
-            api__access_token: data.access_token,
-            api__refresh_token: data.refresh_token,
-            api__scope: data.scope,
-          },
-        },
-        callback: (authData) => {
-          const param = {
-            action: "open",
-            url: `#Page:Create_Work_Ticket?`,
-            window: "same",
-          };
-          if (state) {
-            let s = JSON.parse(decodeURI(state));
-            Object.keys(s).map((q) => {
-              param.url += `${q}=${s[q]}&`;
-            });
-          }
-          /*global ZOHO */
-          ZOHO.CREATOR.UTIL.navigateParentURL(param);
-        },
-      })
-    );
-  };
 
   const handlePrint = useReactToPrint({
     documentTitle: "Print This Document",
@@ -889,13 +766,8 @@ function Main(props) {
     assemblyItem.isValidating ||
     !workTicketItem;
 
-  if (authenticate.isMutating) {
-    return (
-      <Box display="flex" alignItems="center" gap={2} p={3} component={Paper}>
-        <CircularProgress size={20} />
-        <Typography>Authenticating...</Typography>
-      </Box>
-    );
+  if (getSuspenseComponent()) {
+    return getSuspenseComponent();
   }
 
   if (!assemblySKU) {
@@ -903,53 +775,6 @@ function Main(props) {
       <Alert severity="info">
         Search an assembly item to create work ticket.
       </Alert>
-    );
-  }
-
-  if (
-    assemblyItem.isLoading ||
-    compositeItem.isLoading ||
-    lastWorkTicket.isLoading ||
-    users.isLoading ||
-    currentWorkTicket.isLoading ||
-    _zohoSettings.isLoading ||
-    zohoSettings.isLoading ||
-    addedComponents.isLoading ||
-    usedComponents.isLoading
-  ) {
-    return <LinearProgress />;
-  }
-
-  if (!settings.api.access_token) {
-    return (
-      <Paper
-        style={{
-          height: "100vh",
-          display: "grid",
-          placeItems: "center",
-          width: "100vw",
-        }}
-      >
-        <Button
-          variant="contained"
-          onClick={() => {
-            const param = {
-              action: "open",
-              url: getAuthenticationLink(
-                encodeURI(
-                  JSON.stringify({ assembly_id, assembly_sku, work_ticket_id })
-                )
-              ),
-              window: "same",
-            };
-            /*global ZOHO */
-            ZOHO.CREATOR.UTIL.navigateParentURL(param);
-          }}
-          startIcon={<LoginOutlined />}
-        >
-          Authenticate
-        </Button>
-      </Paper>
     );
   }
 
@@ -1455,6 +1280,32 @@ function Main(props) {
                 </TableRow>
               </TableHead>
               <TableBody>
+                {compositeItem.isLoading &&
+                  new Array(10).fill(0).map((a, i) => (
+                    <TableRow>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                      <TableCell key={i}>
+                        <Skeleton width={130} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 {components
                   ?.sort((a, b) => a.sku - b.sku)
                   .map((d) => {

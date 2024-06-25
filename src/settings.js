@@ -26,7 +26,8 @@ export const settings = {
   api: {
     access_token: "",
     refresh_token: "",
-    scopes: "ZohoInventory.compositeitems.ALL,ZohoInventory.items.ALL,ZohoInventory.salesorders.ALL",
+    scopes:
+      "ZohoInventory.compositeitems.ALL,ZohoInventory.items.ALL,ZohoInventory.salesorders.ALL",
     client_id: "1000.DQMP4JH4HYV87AR5340JGWMHH71K0J",
     client_secret: "3dd120a321c0be6066572fcaf814563ffa47c6350f",
     redirect_url: "https://ksportusa.com/zoho/zohoapiredirect.php",
