@@ -28,12 +28,22 @@ function useAuth({ isLoading = false } = {}) {
   const authenticate = useAuthenticateMutation(code);
   const [error, setError] = useState();
 
-  const _zohoSettings = useGetAllRecords(
+  const users = useGetAllRecords(
     creatorConfig({
-      reportName: "All_Settings",
+      reportName: "All_Users",
       page: 1,
-      pageSize: 1,
+      pageSize: 200,
     })
+  );
+
+  const _zohoSettings = useGetAllRecords(
+    !users?.data
+      ? null
+      : creatorConfig({
+          reportName: "All_Settings",
+          page: 1,
+          pageSize: 1,
+        })
   );
 
   const zohoSettings = useGetRecordById(
@@ -42,16 +52,6 @@ function useAuth({ isLoading = false } = {}) {
   );
 
   const refresh = useRefreshMutation(zohoSettings.data?.api__refresh_token);
-
-  const users = useGetAllRecords(
-    !zohoSettings
-      ? null
-      : creatorConfig({
-          reportName: "All_Users",
-          page: 1,
-          pageSize: 200,
-        })
-  );
 
   const [isReady, setIsReady] = useState(false);
 
