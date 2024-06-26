@@ -1,22 +1,9 @@
 import React, { useEffect, useState } from "react";
 import creatorConfig from "../lib/creatorConfig";
-import {
-  useAuthenticateMutation,
-  useRefreshMutation,
-  useUpdateRecordMutation,
-} from "../services/mutation";
+import { useAuthenticateMutation, useRefreshMutation, useUpdateRecordMutation } from "../services/mutation";
 import { settings } from "../settings";
 import { useGetAllRecords, useGetRecordById } from "../services/queries";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Grid,
-  LinearProgress,
-  Paper,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Grid, LinearProgress, Paper, Typography } from "@mui/material";
 import { getAuthenticationLink } from "../utils";
 import { LoginOutlined } from "@mui/icons-material";
 import { zohoAxiosInstance } from "../services/fetcher";
@@ -55,20 +42,16 @@ function useAuth({ isLoading = false } = {}) {
 
   const [isReady, setIsReady] = useState(false);
 
-  const loggedInUser = users?.data?.find(
-    (q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser
-  );
+  const loggedInUser = users?.data?.find((q) => q.Email === ZOHO.CREATOR.UTIL.getInitParams().loginUser);
 
   useEffect(() => {
     if (refresh.data?.access_token) {
-      handleAuth(refresh.data);
+      handleAuth(refresh.data, state);
     } else if (refresh.data?.error === "invalid_code") {
-      setError(
-        "Invalid refresh token. Refresh the page and reauthorize the connection."
-      );
+      setError("Invalid refresh token. Refresh the page and reauthorize the connection.");
       handleResetKeys();
     }
-  }, [refresh.data]);
+  }, [refresh]);
 
   useEffect(() => {
     if (zohoSettings.data) {
@@ -94,8 +77,7 @@ function useAuth({ isLoading = false } = {}) {
       });
 
       if (settings.api.access_token) {
-        zohoAxiosInstance.defaults.headers.common.Authorization =
-          settings.api.access_token;
+        zohoAxiosInstance.defaults.headers.common.Authorization = settings.api.access_token;
         setIsReady(true);
       } else if (zohoSettings.data?.api__refresh_token) {
         refresh.trigger();
@@ -113,9 +95,7 @@ function useAuth({ isLoading = false } = {}) {
     if (authenticate.data?.access_token) {
       handleAuth(authenticate.data, state);
     } else if (authenticate.data?.error === "invalid_code") {
-      setError(
-        "Invalid token. Refresh the page and reauthorize the connection"
-      );
+      setError("Invalid token. Refresh the page and reauthorize the connection");
       handleResetKeys();
     }
   }, [authenticate.isMutating]);
@@ -144,12 +124,7 @@ function useAuth({ isLoading = false } = {}) {
             placeItems: "center",
           }}
         >
-          <Box
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            gap={3}
-          >
+          <Box display="flex" flexDirection="column" alignItems="center" gap={3}>
             <img
               src="https://ksportusa.com/wp-content/uploads/2024/06/autoline-logo.png"
               style={{ userSelect: "none", width: "230px" }}
@@ -170,17 +145,12 @@ function useAuth({ isLoading = false } = {}) {
             width: "100vw",
           }}
         >
-          {loggedInUser?.Role !== "ADMIN" &&
-            loggedInUser?.Role !== "SUPERADMIN" && (
-              <Alert severity="info">
-                <Typography>
-                  Please contact your admin to enable the Zoho Inventory
-                  integration.
-                </Typography>
-              </Alert>
-            )}
-          {(loggedInUser?.Role === "ADMIN" ||
-            loggedInUser?.Role === "SUPERADMIN") && (
+          {loggedInUser?.Role !== "ADMIN" && loggedInUser?.Role !== "SUPERADMIN" && (
+            <Alert severity="info">
+              <Typography>Please contact your admin to enable the Zoho Inventory integration.</Typography>
+            </Alert>
+          )}
+          {(loggedInUser?.Role === "ADMIN" || loggedInUser?.Role === "SUPERADMIN") && (
             <Button
               variant="contained"
               onClick={() => {
@@ -243,7 +213,7 @@ function useAuth({ isLoading = false } = {}) {
         callback: (authData) => {
           const param = {
             action: "open",
-            url: `#Page:Inventory?`,
+            url: `#Page:Create_Work_Ticket?`,
             window: "same",
           };
           if (state) {

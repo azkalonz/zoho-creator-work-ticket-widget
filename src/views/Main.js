@@ -85,7 +85,6 @@ function Main(props) {
   const updateWorkTicket = useUpdateRecordMutation();
   const createBundle = useCreateBundleMutation();
   const deleteBundle = useDeleteBundleMutation(bundleId);
-  const refresh = useRefreshMutation();
   const currentWorkTicket = useGetRecordById("All_Work_Tickets", workTicketID);
   const lastWorkTicket = useGetAllRecords(
     !assemblySKU
@@ -97,7 +96,7 @@ function Main(props) {
         })
   );
 
-  const { isReady, users, getSuspenseComponent } = useAuth({
+  const { isReady, users, getSuspenseComponent, refresh } = useAuth({
     isLoading: lastWorkTicket.isLoading || currentWorkTicket.isLoading,
   });
   const assemblyItem = useSearchItem(!isReady ? null : assemblySKU);
